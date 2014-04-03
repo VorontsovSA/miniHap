@@ -25,7 +25,7 @@ var CurrentMonth = new Schema({
 
 var Tariff = new Schema({
   number: String,
-  rate: 
+  rate: Number
 });
 
 var TariffGroup = new Schema({

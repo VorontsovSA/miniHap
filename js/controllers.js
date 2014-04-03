@@ -30,13 +30,13 @@ hapControllers.controller('TariffGroupsCtrl', ['$scope', 'TariffGroup', function
 hapControllers.controller('TariffGroupsEditCtrl', ['$scope', '$routeParams', 'TariffGroup', '$http', function($scope, $routeParams, TariffGroup, $http) {
   $scope.tariff_groups_id = $routeParams.tariff_group_id;
   $scope.tariff_group = TariffGroup.get({tariff_group_id: $routeParams.tariff_group_id});
-  $http({method: 'GET', url: 'http://localhost:1337/api'}).
-    success(function(data, status) {
-      $scope.status = status;
-      $scope.data = data;
-    }).
-    error(function(data, status) {
-      $scope.data = data || "Request failed";
-      $scope.status = status;
-  });
+  // $http({method: 'GET', url: 'http://localhost:1337/api'}).
+  //   success(function(data, status) {
+  //     $scope.status = status;
+  //     $scope.data = data;
+  //   }).
+  //   error(function(data, status) {
+  //     $scope.data = data || "Request failed";
+  //     $scope.status = status;
+  // });
 }]);
