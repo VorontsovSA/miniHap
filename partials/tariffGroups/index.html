@@ -1,0 +1,7 @@
+<h3 class="page-header">Список групп тарифов</h3>
+
+<ul class="phones">
+ <li ng-repeat="tariff_group in tariff_groups" >
+   <a href="#/tariffGroups/edit/{{tariff_group.id}}">{{tariff_group.name}}</a>
+ </li>
+</ul>
