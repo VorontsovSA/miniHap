@@ -3,11 +3,12 @@
 /**
  * Module dependencies.
  */
-var express         = require('express');
-var path            = require('path'); // модуль для парсинга пути
-var log             = require('./libs/log')(module);
-var ArticleModel    = require('./libs/mongoose').ArticleModel;
-var CurrentMonthModel    = require('./libs/mongoose').CurrentMonthModel;
+var express            = require('express');
+var path               = require('path'); // модуль для парсинга пути
+var log                = require('./libs/log')(module);
+var ArticleModel       = require('./libs/mongoose').ArticleModel;
+var CurrentMonthModel  = require('./libs/mongoose').CurrentMonthModel;
+var TariffGroupModel   = require('./libs/mongoose').TariffGroupModel;
 var app = express();
 
 app.use(express.logger('dev')); // выводим все запросы со статусами в консоль
@@ -46,9 +47,9 @@ app.get('/api', function (req, res) {
 //#################################
 
 app.get('/api/tariff_group', function(req, res) {
-    return ArticleModel.find(function (err, articles) {
+    return TariffGroupModel.find(function (err, tariff_groups) {
         if (!err) {
-            return res.send(articles);
+            return res.send(tariff_groups);
         } else {
             res.statusCode = 500;
             log.error('Internal error(%d): %s',res.statusCode,err.message);
@@ -58,19 +59,102 @@ app.get('/api/tariff_group', function(req, res) {
 });
 
 app.post('/api/tariff_group', function(req, res) {
-    res.send('This is not implemented now');
+    var tariff_group = new TariffGroupModel({
+        name             : req.body.name;
+        use_space        : req.body.use_space;
+        use_common_space : req.body.use_common_space;
+        use_residents    : req.body.use_residents;
+        norm_dimension   : req.body.norm_dimension;
+        value_dimension  : req.body.value_dimension;
+        executor         : req.body.executor;
+        tariffs          : req.body.tariffs;
+    });
+
+    tariff_group.save(function (err) {
+        if (!err) {
+            log.info("article created");
+            return res.send({ status: 'OK', tariff_group:tariff_group });
+        } else {
+            console.log(err);
+            if(err.name == 'ValidationError') {
+                res.statusCode = 400;
+                res.send({ error: 'Validation error' });
+            } else {
+                res.statusCode = 500;
+                res.send({ error: 'Server error' });
+            }
+            log.error('Internal error(%d): %s',res.statusCode,err.message);
+        }
+    });
 });
 
 app.get('/api/tariff_group/:id', function(req, res) {
-    res.send({id:1, name: 'Содержание жилья'});
+    return TariffGroupModel.findById(req.params.id, function (err, tariff_group) {
+        if(!tariff_group) {
+            res.statusCode = 404;
+            return res.send({ error: 'Not found' });
+        }
+        if (!err) {
+            return res.send({ status: 'OK', tariff_group:tariff_group });
+        } else {
+            res.statusCode = 500;
+            log.error('Internal error(%d): %s',res.statusCode,err.message);
+            return res.send({ error: 'Server error' });
+        }
+    });
 });
 
 app.put('/api/tariff_group/:id', function (req, res){
-    res.send('This is not implemented now');    
+    return TariffGroupModel.findById(req.params.id, function (err, tariff_group) {
+        if(!tariff_group) {
+            res.statusCode = 404;
+            return res.send({ error: 'Not found' });
+        }
+
+        tariff_group.name             = req.body.name;
+        tariff_group.use_space        = req.body.use_space;
+        tariff_group.use_common_space = req.body.use_common_space;
+        tariff_group.use_residents    = req.body.use_residents;
+        tariff_group.norm_dimension   = req.body.norm_dimension;
+        tariff_group.value_dimension  = req.body.value_dimension;
+        tariff_group.executor         = req.body.executor;
+        tariff_group.tariffs          = req.body.tariffs;
+
+        return tariff_group.save(function (err) {
+            if (!err) {
+                log.info("tariff_group updated");
+                return res.send({ status: 'OK', tariff_group:tariff_group });
+            } else {
+                if(err.name == 'ValidationError') {
+                    res.statusCode = 400;
+                    res.send({ error: 'Validation error' });
+                } else {
+                    res.statusCode = 500;
+                    res.send({ error: 'Server error' });
+                }
+                log.error('Internal error(%d): %s',res.statusCode,err.message);
+            }
+        });
+    });
 });
 
 app.delete('/api/tariff_group/:id', function (req, res){
-    res.send('This is not implemented now');
+    return TariffGroupModel.findById(req.params.id, function (err, tariff_group) {
+        if(!tariff_group) {
+            res.statusCode = 404;
+            return res.send({ error: 'Not found' });
+        }
+        return tariff_group.remove(function (err) {
+            if (!err) {
+                log.info("tariff_group removed");
+                return res.send({ status: 'OK' });
+            } else {
+                res.statusCode = 500;
+                log.error('Internal error(%d): %s',res.statusCode,err.message);
+                return res.send({ error: 'Server error' });
+            }
+        });
+    });
 });
 
 //#################################
