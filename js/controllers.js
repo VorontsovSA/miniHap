@@ -25,7 +25,7 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Curr
 hapControllers.controller('ObjectsCtrl', ['$scope', function($scope) {
 }]);
 hapControllers.controller('TariffGroupsCtrl', ['$scope', 'TariffGroup', function($scope, TariffGroup) {
-  $scope.tariff_groups = TariffGroup.query();//[{id:1, name: 'Содержание жилья'}, {id:2, name: 'Ремонт жилья'}];
+  $scope.tariff_groups = TariffGroup.get();//[{id:1, name: 'Содержание жилья'}, {id:2, name: 'Ремонт жилья'}];
 }]);
 hapControllers.controller('TariffGroupsEditCtrl', ['$scope', '$routeParams', 'TariffGroup', '$http', function($scope, $routeParams, TariffGroup, $http) {
   $scope.tariff_groups_id = $routeParams.tariff_group_id;
