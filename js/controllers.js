@@ -25,18 +25,44 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Curr
 hapControllers.controller('ObjectsCtrl', ['$scope', function($scope) {
 }]);
 hapControllers.controller('TariffGroupsCtrl', ['$scope', 'TariffGroup', function($scope, TariffGroup) {
-  $scope.tariff_groups = TariffGroup.get();//[{id:1, name: 'Содержание жилья'}, {id:2, name: 'Ремонт жилья'}];
+  $scope.tariff_groups = TariffGroup.query();
 }]);
-hapControllers.controller('TariffGroupsEditCtrl', ['$scope', '$routeParams', 'TariffGroup', '$http', function($scope, $routeParams, TariffGroup, $http) {
-  $scope.tariff_groups_id = $routeParams.tariff_group_id;
-  $scope.tariff_group = TariffGroup.get({tariff_group_id: $routeParams.tariff_group_id});
-  // $http({method: 'GET', url: 'http://localhost:1337/api'}).
-  //   success(function(data, status) {
-  //     $scope.status = status;
-  //     $scope.data = data;
-  //   }).
-  //   error(function(data, status) {
-  //     $scope.data = data || "Request failed";
-  //     $scope.status = status;
-  // });
+hapControllers.controller('TariffGroupsEditCtrl', ['$scope', '$routeParams', '$location', 'TariffGroup', '$http', '$timeout', '$dialogs',
+  function($scope, $routeParams, $location, TariffGroup, $http, $timeout, $dialogs) {
+  var self = this;
+  $scope.tariff_group = TariffGroup.get({id: $routeParams.tariff_group_id}, function(tariff_group) {
+    //self.original = tariff_group;
+    //$scope.tariff_group = new TariffGroup(self.original).tariff_group;
+  });
+
+  $scope.isClean = function() {
+    // return angular.equals(self.original, $scope.tariff_group);
+  }
+
+  $scope.delete = function() {
+    var dlg = $dialogs.confirm('Внимание','Действительно хотите удалить группу тарифов и все связанные объекты?');
+    dlg.result.then(function(btn){
+      $scope.tariff_group.$delete(function() {
+        $location.path('/tariffGroups');
+      });
+    },function(btn){
+      //$scope.confirmed = 'Shame on you for not thinking this is awesome!';
+    });
+  };
+
+  $scope.save = function() {
+    console.log($scope.tariff_group._id);
+    $scope.tariff_group.$update(function() {
+      $location.path('/tariffGroups');
+    });
+  };
+}]);
+hapControllers.controller('TariffGroupsNewCtrl', ['$scope', '$routeParams', '$location', 'TariffGroup', '$http', function($scope, $routeParams, $location, TariffGroup, $http) {
+  $scope.tariff_group = {};
+  $scope.save = function(tariff_group) {
+    console.log(tariff_group);
+    TariffGroup.save(tariff_group, function() {
+      $location.path('/tariffGroups');
+    });
+  };
 }]);

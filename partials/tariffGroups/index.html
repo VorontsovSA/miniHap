@@ -1,7 +1,22 @@
 <h3 class="page-header">Список групп тарифов</h3>
 
-<ul class="phones">
- <li ng-repeat="tariff_group in tariff_groups" >
-   <a href="#/tariffGroups/edit/{{tariff_group.id}}">{{tariff_group.name}}</a>
- </li>
-</ul>
+<a href="#/tariffGroups/new" class="btn btn-primary">Создать</a>
+
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Название</th>
+      <th>Размерность норматива</th>
+      <th>Размерность объема</th>
+      <th>Назначение</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="tariff_group in tariff_groups | orderBy:-executor">
+      <td><a href="#/tariffGroups/edit/{{tariff_group._id}}">{{tariff_group.name}}</a></td>
+      <td>{{tariff_group.norm_dimension[0]}}</td>
+      <td>{{tariff_group.value_dimension[0]}}</td>
+      <td>{{tariff_group.executor[0]}}</td>
+    </tr>
+  </tbody>
+</table>

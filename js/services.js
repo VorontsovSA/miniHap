@@ -10,9 +10,11 @@ angular.module('phonecatServices', ['ngResource']).
 
 angular.module('hap.services', ['ngResource']).
   factory('TariffGroup', function($resource){
-    return $resource('http://localhost:1337/api/tariff_group/:tariff_group_id', {}, {
-      get:    {method:'GET', params:{tariff_group_id: ''}, isArray:true},
-      update: {method:'PUT', isArray:true},
+    return $resource('http://localhost:1337/api/tariff_group/:id', {id: '@_id'}, {
+      query:  {method:'GET', isArray:true},
+      get:    {method:'GET', isArray:false},
+      update: {method:'PUT', isArray:false},
+      delete: {method:'DELETE', isArray:false},
     });
   }).
   factory('CurrentMonth', function($resource){

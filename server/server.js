@@ -95,7 +95,7 @@ app.get('/api/tariff_group/:id', function(req, res) {
             return res.send({ error: 'Not found' });
         }
         if (!err) {
-            return res.send({ status: 'OK', tariff_group:tariff_group });
+            return res.send(tariff_group);
         } else {
             res.statusCode = 500;
             log.error('Internal error(%d): %s',res.statusCode,err.message);
@@ -105,6 +105,7 @@ app.get('/api/tariff_group/:id', function(req, res) {
 });
 
 app.put('/api/tariff_group/:id', function (req, res){
+    console.log('id = ' + req.params.id);
     return TariffGroupModel.findById(req.params.id, function (err, tariff_group) {
         if(!tariff_group) {
             res.statusCode = 404;

@@ -7,7 +7,9 @@ angular.module('hap', [
   'hap.filters',
   'hap.services',
   'hap.directives',
-  'hap.controllers'
+  'hap.controllers',
+  'ui.bootstrap',
+  'dialogs'
 ]).
 config(['$routeProvider', function($routeProvider) {
   $routeProvider.when('/objects', {templateUrl: 'partials/objects/index.html', controller: 'ObjectsCtrl'});
