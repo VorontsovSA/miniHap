@@ -1,1 +1,20 @@
 <h3 class="page-header">Список тарифов</h3>
+
+<a href="#/tariffs/new" class="btn btn-primary">Создать</a>
+
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Номер</th>
+      <th>Группа тарифов</th>
+      <th>Ставка</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="tariff in tariffs">
+      <td><a href="#/tariffs/edit/{{tariff._id}}">{{tariff.number}}</a></td>
+      <td>{{tariff._tariff_group.name}}</td>
+      <td>{{tariff.rate}}</td>
+    </tr>
+  </tbody>
+</table>

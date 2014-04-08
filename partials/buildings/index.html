@@ -1,0 +1,20 @@
+<h3 class="page-header">Список домов</h3>
+
+<a href="#/buildings/new" class="btn btn-primary">Создать</a>
+
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Адрес</th>
+      <th>Описание</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="building in buildings">
+      <td><a href="#/appartments/{{building._id}}">Ул.{{building.street}} дом.{{building.number}}</a></td>
+      <td>{{building.description}}</td>
+      <td><a class="pull-right" href="#/buildings/edit/{{building._id}}"><span class="glyphicon glyphicon-pencil"></span></a></td>
+    </tr>
+  </tbody>
+</table>

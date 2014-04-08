@@ -12,11 +12,11 @@
     </tr>
   </thead>
   <tbody>
-    <tr ng-repeat="tariff_group in tariff_groups | orderBy:-executor">
+    <tr ng-repeat="tariff_group in tariff_groups">
       <td><a href="#/tariffGroups/edit/{{tariff_group._id}}">{{tariff_group.name}}</a></td>
-      <td>{{tariff_group.norm_dimension[0]}}</td>
-      <td>{{tariff_group.value_dimension[0]}}</td>
-      <td>{{tariff_group.executor[0]}}</td>
+      <td>{{tariff_group.norm_dimension}}</td>
+      <td>{{tariff_group.value_dimension}}</td>
+      <td>{{tariff_group.executor}}</td>
     </tr>
   </tbody>
 </table>

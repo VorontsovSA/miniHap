@@ -1,1 +1,27 @@
 <h3 class="page-header">Редактирование тарифа</h3>
+
+<form name="form" class="form-horizontal" role="form">
+  <div class="form-group">
+    <label class="col-sm-2 control-label" >Номер</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" ng-model="tariff.number" required>
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="col-sm-2 control-label" >Ставка</label>
+    <div class="col-sm-10">
+      <input type="number" class="form-control" ng-model="tariff.rate" required smartFloat>
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="col-sm-2 control-label">Назначение</label>
+    <div class="col-sm-10">
+      <select ng-model="tariff._tariff_group" class="form-control" required>
+        <option ng-repeat="tariff_group in tariff_groups" value="{{tariff_group._id}}">{{tariff_group.name}}</option>
+      </select>
+    </div>
+  </div>
+  <button ng-disabled="form.$invalid" type="submit" class="col-sm-offset-2 btn btn-primary" ng-click="save()">Сохранить</button>
+  <a class="btn btn-default" href="#/tariffs">Вернуться к списку</a>
+  <button class="btn btn-warning pull-right" ng-click="delete()">Удалить</button>
+</form>
