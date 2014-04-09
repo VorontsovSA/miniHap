@@ -104,7 +104,7 @@ hapControllers.controller('AppartmentsEditCtrl', ['$scope', '$routeParams', '$lo
   };
 
   $scope.save = function() {
-    $scope.building.$update(function() {
+    $scope.appartment.$update(function() {
       $location.path('/appartments/' + $scope.building._id);
     });
   };
