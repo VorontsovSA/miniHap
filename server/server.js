@@ -7,7 +7,6 @@ var express            = require('express');
 var path               = require('path'); // модуль для парсинга пути
 var log                = require('./libs/log')(module);
 // var ArticleModel       = require('./libs/mongoose').ArticleModel;
-var CurrentMonthModel  = require('./libs/mongoose').CurrentMonthModel;
 var TariffGroupModel   = require('./libs/mongoose').TariffGroupModel;
 var TariffModel        = require('./libs/mongoose').TariffModel;
 var BuildingModel      = require('./libs/mongoose').BuildingModel;
@@ -499,98 +498,10 @@ app.delete('/api/tariff/:id', function (req, res){
 });
 
 //#################################
-//#######   Current Date   ########
-//#################################
-
-app.get('/api/current_month', function(req, res) {
-    return CurrentMonthModel.findOne({}, 'date', function (err, current_month) {
-        if (!err) {
-          if(current_month)
-          {
-            return res.send(current_month);
-          }
-          else
-          {
-            var date = new Date();
-            var period = new PeriodModel({
-              date:  new Date(date.getFullYear(), date.getMonth(), 1)
-            });
-            period.save();
-            var current_month = new CurrentMonthModel({
-              date:  new Date(date.getFullYear(), date.getMonth(), 1)
-            });
-            current_month.save(function (err) {
-              if (!err) {
-                return res.send(current_month);
-              }
-              else
-              {
-                console.log("Error");
-              }
-            });
-          }
-        } else {
-            res.statusCode = 500;
-            log.error('Internal error(%d): %s',res.statusCode,err.message);
-            return res.send({ error: 'Server error' });
-        }
-    });
-});
-
-app.post('/api/current_month', function(req, res) {
-    var current_month = new CurrentMonthModel({
-        date: req.body.date,
-    });
-
-    current_month.save(function (err) {
-        if (!err) {
-            log.info("current_month created");
-            return res.send({ status: 'OK', current_month:current_month });
-        } else {
-            console.log(err);
-            if(err.name == 'ValidationError') {
-                res.statusCode = 400;
-                res.send({ error: 'Validation error' });
-            } else {
-                res.statusCode = 500;
-                res.send({ error: 'Server error' });
-            }
-            log.error('Internal error(%d): %s',res.statusCode,err.message);
-        }
-    });
-});
-
-app.put('/api/current_month', function (req, res){
-    return CurrentMonthModel.findById(req.body._id, function (err, current_month) {
-        if(!current_month) {
-            res.statusCode = 404;
-            return res.send({ error: 'Not found' });
-        }
-
-        current_month.date = req.body.date;
-        return current_month.save(function (err) {
-            if (!err) {
-                log.info("current_month updated");
-                return res.send(current_month);
-            } else {
-                if(err.name == 'ValidationError') {
-                    res.statusCode = 400;
-                    res.send({ error: 'Validation error' });
-                } else {
-                    res.statusCode = 500;
-                    res.send({ error: 'Server error' });
-                }
-                log.error('Internal error(%d): %s',res.statusCode,err.message);
-            }
-        });
-    });
-});
-
-//#################################
 //#######     Periods    ##########
 //#################################
 
-app.get('/api/period', function(req, res) {
+app.get('/api/period/date', function(req, res) {
     return PeriodModel.findOne({ date: req.query.date }).exec(function (err, period) {
         if (!err) {
             return res.send(period);
@@ -603,7 +514,39 @@ app.get('/api/period', function(req, res) {
     });
 });
 
-app.post('/api/period', function(req, res) {
+app.get('/api/period/current', function(req, res) {
+    return PeriodModel.findOne({ finished: false }).exec(function (err, period) {
+        if (!err) {
+          if(period)
+          {
+            return res.send(period);
+          }
+          else
+          {
+            var date = new Date();
+            var period = new PeriodModel({
+              date:  new Date(date.getFullYear(), date.getMonth(), 1)
+            });
+            period.save(function (err) {
+              if (!err) {
+                return res.send(period);
+              }
+              else
+              {
+                console.log("Error");
+              }
+            });
+          }
+        } else {
+            res.statusCode = 500;
+            log.error('Internal error(%d): %s',res.statusCode,err.message);
+            console.log(err.message);
+            return res.send({ error: 'Server error' });
+        }
+    });
+});
+
+app.post('/api/period/one', function(req, res) {
     var period = new PeriodModel({
         date             : req.body.date,
         finished         : req.body.finished,
@@ -612,7 +555,7 @@ app.post('/api/period', function(req, res) {
     period.save(function (err) {
         if (!err) {
             log.info("period created");
-            return res.send({ status: 'OK', period:period });
+            return res.send(period);
         } else {
             console.log(err);
             if(err.name == 'ValidationError') {
@@ -627,7 +570,7 @@ app.post('/api/period', function(req, res) {
     });
 });
 
-app.get('/api/period/:id', function(req, res) {
+app.get('/api/period/one/:id', function(req, res) {
     return PeriodModel.findById(req.params.id, function (err, period) {
         if(!period) {
             res.statusCode = 404;
@@ -643,7 +586,7 @@ app.get('/api/period/:id', function(req, res) {
     });
 });
 
-app.put('/api/period/:id', function (req, res){
+app.put('/api/period/one/:id', function (req, res){
     console.log('id = ' + req.params.id);
     return PeriodModel.findById(req.params.id, function (err, period) {
         if(!period) {
@@ -657,7 +600,7 @@ app.put('/api/period/:id', function (req, res){
         return period.save(function (err) {
             if (!err) {
                 log.info("period updated");
-                return res.send({ status: 'OK', period:period });
+                return res.send(period);
             } else {
                 if(err.name == 'ValidationError') {
                     res.statusCode = 400;
@@ -672,7 +615,7 @@ app.put('/api/period/:id', function (req, res){
     });
 });
 
-app.delete('/api/period/:id', function (req, res){
+app.delete('/api/period/one/:id', function (req, res){
     return PeriodModel.findById(req.params.id, function (err, period) {
         if(!period) {
             res.statusCode = 404;

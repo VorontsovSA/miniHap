@@ -41,16 +41,13 @@ angular.module('hap.services', ['ngResource']).
       delete: {method:'DELETE', isArray:false},
     });
   }).
-  factory('CurrentMonth', function($resource){
-    return $resource('http://localhost:1337/api/current_month/', {}, {
-      update: {method:'PUT', isArray:false}
-    });
-  }).
-  factory('Periods', function($resource){
-    return $resource('http://localhost:1337/api/period/:id', {id: '@_id'}, {
-      query:  {method:'GET', isArray:false},
-      get:    {method:'GET', isArray:false},
-      update: {method:'PUT', isArray:false},
-      delete: {method:'DELETE', isArray:false},
+  factory('Period', function($resource){
+    return $resource('http://localhost:1337/api/period/:query_type/:id', {id: '@_id'}, {
+      getCurrent: {method:'GET', params:{query_type:'current'}, isArray:false},
+      getByDate:  {method:'GET', params:{query_type:'date'}, isArray:false},
+      get:        {method:'GET', params:{query_type:'one'}, isArray:false},
+      save:       {method:'POST', params:{query_type:'one'}, isArray:false},
+      update:     {method:'PUT', params:{query_type:'one'}, isArray:false},
+      delete:     {method:'DELETE', params:{query_type:'one'}, isArray:false},
     });
   });

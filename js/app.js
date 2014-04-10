@@ -10,7 +10,8 @@ angular.module('hap', [
   'hap.controllers',
   'ui.bootstrap',
   'checklist-model',
-  'dialogs'
+  'dialogs',
+  'angularMoment'
 ]).
 config(['$routeProvider', function($routeProvider) {
   $routeProvider.when('/buildings', {templateUrl: 'partials/buildings/index.html', controller: 'BuildingsCtrl'});
@@ -26,4 +27,11 @@ config(['$routeProvider', function($routeProvider) {
   $routeProvider.when('/tariffs/new', {templateUrl: 'partials/tariffs/new.html', controller: 'TariffsNewCtrl'});
   $routeProvider.when('/tariffs/edit/:tariff_id', {templateUrl: 'partials/tariffs/edit.html', controller: 'TariffsEditCtrl'});
   $routeProvider.otherwise({redirectTo: '/buildings'});
+}]).
+run(['$window', function($window) { // instance-injector
+  // This is an example of a run block.
+  // You can have as many of these as you want.
+  // You can only inject instances (not Providers)
+  // into run blocks
+  $window.moment.lang('ru');
 }]);

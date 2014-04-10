@@ -2,7 +2,6 @@ var mongoose    = require('mongoose');
 var log         = require('./log')(module);
 var config      = require('./config');
 
-// console.log(config.get('mongoose:uri'));
 mongoose.connect(config.get('mongoose:uri'));
 // mongoose.connect('mongodb://localhost/miniHap');
 var db = mongoose.connection;
@@ -19,9 +18,6 @@ db.once('open', function callback () {
 var Schema = mongoose.Schema;
 
 // Schemas
-var CurrentMonth = new Schema({
-  date: Date
-});
 
 var Period = new Schema({
   date: Date,
@@ -70,38 +66,12 @@ var Building = new Schema({
   tariffs: [{ type: Schema.Types.ObjectId, ref: 'Tariff' }]
 });
 
-// var Images = new Schema({
-//     kind: {
-//         type: String,
-//         enum: ['thumbnail', 'detail'],
-//         required: true
-//     },
-//     url: { type: String, required: true }
-// });
-
-// var Article = new Schema({
-//     title: { type: String, required: true },
-//     author: { type: String, required: true },
-//     description: { type: String, required: true },
-//     images: [Images],
-//     modified: { type: Date, default: Date.now }
-// });
-
-// validation
-// Article.path('title').validate(function (v) {
-//     return v.length > 5 && v.length < 70;
-// });
-
-// var ArticleModel = mongoose.model('Article', Article);
-var CurrentMonthModel = mongoose.model('CurrentMonth', CurrentMonth);
 var TariffGroupModel = mongoose.model('TariffGroup', TariffGroup);
 var TariffModel = mongoose.model('Tariff', Tariff);
 var BuildingModel = mongoose.model('Building', Building);
 var AppartmentModel = mongoose.model('Appartment', Appartment);
 var PeriodModel = mongoose.model('Period', Period);
 
-// module.exports.ArticleModel = ArticleModel;
-module.exports.CurrentMonthModel = CurrentMonthModel;
 module.exports.TariffGroupModel  = TariffGroupModel;
 module.exports.TariffModel       = TariffModel;
 module.exports.BuildingModel     = BuildingModel;
