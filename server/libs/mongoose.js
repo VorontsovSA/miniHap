@@ -23,6 +23,12 @@ var CurrentMonth = new Schema({
   date: Date
 });
 
+var Period = new Schema({
+  date: Date,
+  finished: { type: Boolean, default: false }
+});
+
+
 var TariffGroup = new Schema({
   name: String,
   use_space: { type: Boolean, default: false},
@@ -92,6 +98,7 @@ var TariffGroupModel = mongoose.model('TariffGroup', TariffGroup);
 var TariffModel = mongoose.model('Tariff', Tariff);
 var BuildingModel = mongoose.model('Building', Building);
 var AppartmentModel = mongoose.model('Appartment', Appartment);
+var PeriodModel = mongoose.model('Period', Period);
 
 // module.exports.ArticleModel = ArticleModel;
 module.exports.CurrentMonthModel = CurrentMonthModel;
@@ -99,3 +106,4 @@ module.exports.TariffGroupModel  = TariffGroupModel;
 module.exports.TariffModel       = TariffModel;
 module.exports.BuildingModel     = BuildingModel;
 module.exports.AppartmentModel   = AppartmentModel;
+module.exports.PeriodModel       = PeriodModel;

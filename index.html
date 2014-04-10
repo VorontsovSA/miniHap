@@ -36,10 +36,13 @@
           <li ng-class="{active: $location.path() == '/charges'}"><a href="#/tariffGroups">Начисления</a></li>
         </ul>
         <ul class="nav navbar-nav navbar-right">
-          <li><a href="" ng-click="previousMonth()"><span class="glyphicon glyphicon-backward"></span></a></li>
+          <li><a ng-show="last_month && !first_month" href="" ng-click="clearMonth()"><span class="glyphicon glyphicon-step-backward"></span></a></li>
+          <li><a ng-show="!first_month" href="" ng-click="previousMonth()"><span class="glyphicon glyphicon-backward"></span></a></li>
           <li class="active" style="width: 140px; height: 50px; text-align: center;"><a style="width: 140px; height: 50px; display: block;" href='' ng-bind-template="{{current_month.date | russian_date}}"></a></li>
-          <li><a href="" ng-click="nextMonth()"><span class="glyphicon glyphicon-forward"></span></a></li>
+          <li><a ng-show="!last_month" href="" ng-click="nextMonth()"><span class="glyphicon glyphicon-forward"></span></a></li>
+          <li><a ng-show="last_month" href="" ng-click="closeMonth()"><span class="glyphicon glyphicon-step-forward"></span></a></li>
         </ul>
+        {{current_month.date}}
       </div><!--/.nav-collapse -->
     </div>
   </div>

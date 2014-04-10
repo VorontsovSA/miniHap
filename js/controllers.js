@@ -4,9 +4,31 @@
 
 var hapControllers = angular.module('hap.controllers', []);
 
-hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'CurrentMonth', function($scope, $rootScope, $location, CurrentMonth) {
+hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'CurrentMonth', 'Periods', '$dialogs', '$http',
+  function($scope, $rootScope, $location, CurrentMonth, Periods, $dialogs, $http) {
   $scope.$location = $location;
-  $rootScope.current_month = CurrentMonth.get();
+  $rootScope.last_month = true;
+  $rootScope.first_month = true;
+  $rootScope.current_month = CurrentMonth.get(function (current_month) {
+    var date = new Date(current_month.date);
+    var date_next = new Date(date.getFullYear(), date.getMonth()+3, 1);
+    var date_before = new Date(date.getFullYear(), date.getMonth()-3, 1);
+    console.log($rootScope);
+    // $rootScope.next_period = Periods.query({ date: date_next.toString()}, function (period) {
+    //   if(period.date) $rootScope.last_month = false;
+    //   console.log('last_month');
+    //   console.log($rootScope.last_month);
+    //   console.log(period);
+    // });
+    // $rootScope.current_period = Periods.query({ date: date.toString()}, function (period) {
+    //   console.log(period);
+    // });
+    // $rootScope.last_period = Periods.query({ date: date_before.toUTCString()}, function (period) {
+    //   if(period.date) $rootScope.first_month = false;
+    //   console.log('first_month');
+    //   console.log($rootScope.first_month);
+    // });
+  });
   console.log($rootScope.current_month);
   $scope.previousMonth = function() {
     var date = new Date($rootScope.current_month.date);
@@ -21,6 +43,61 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Curr
     $rootScope.current_month.$update(function() {
       $location.path($location.path());
     });
+  };
+  $scope.clearMonth = function() {
+    var dlg = $dialogs.confirm('Внимание','Действительно хотите очистить всю информацию за данный период и перейти к предыдущему периоду?');
+    dlg.result.then(function(btn){
+      var date = new Date($rootScope.current_month.date);
+      var date_next = new Date(date.getFullYear(), date.getMonth()+1, 1);
+      var date_before = new Date(date.getFullYear(), date.getMonth()-1, 1);
+      // Удалить текущий период
+      $rootScope.current_period.$delete();
+      // Создать новый период
+      // $rootScope.current_period = Period.save({ date });
+      // Удалить всю информацию и перейти на прошлый период
+      $http({method: 'GET', url: 'http://localhost:1337/api'}).
+      success(function(data, status) {
+        $scope.status = status;
+        $scope.data = data;
+        var date = new Date($rootScope.current_month.before_date);
+        $rootScope.current_month.date = date_before;
+        $rootScope.current_month.$update(function() {
+          $location.path('/buildings');
+        });
+      }).
+      error(function(data, status) {
+        $scope.data = data || "Request failed";
+        $scope.status = status;
+      });
+    },function(btn){});
+  };
+  $scope.closeMonth = function() {
+    var dlg = $dialogs.confirm('Внимание','Действительно хотите закрыть данный период и перейти к следующему периоду?');
+    dlg.result.then(function(btn){
+      var date = new Date($rootScope.current_month.date);
+      var date_next = new Date(date.getFullYear(), date.getMonth()+1, 1);
+      var date_before = new Date(date.getFullYear(), date.getMonth()-1, 1);
+      // Закрыть текущий период
+      $rootScope.current_period.finished = true;
+      $rootScope.current_period.$update();
+      // Создать новый период
+      $rootScope.current_period = Period.save({ date: date_next.toString() });
+      // Удалить всю информацию и перейти на прошлый период
+      $http({method: 'GET', url: 'http://localhost:1337/api'}).
+      success(function(data, status) {
+        $scope.status = status;
+        $scope.data = data;
+        var date = new Date($rootScope.current_month.date);
+        $rootScope.current_month.date = date_next;
+        $rootScope.current_month.$update(function() {
+          $location.path('/buildings');
+        });
+      }).
+      error(function(data, status) {
+        $scope.data = data || "Request failed";
+        $scope.status = status;
+      });
+    },function(btn){});
   };
 }]);
 //#################################

@@ -12,6 +12,7 @@ var TariffGroupModel   = require('./libs/mongoose').TariffGroupModel;
 var TariffModel        = require('./libs/mongoose').TariffModel;
 var BuildingModel      = require('./libs/mongoose').BuildingModel;
 var AppartmentModel    = require('./libs/mongoose').AppartmentModel;
+var PeriodModel        = require('./libs/mongoose').PeriodModel;
 var app = express();
 
 app.use(express.logger('dev')); // выводим все запросы со статусами в консоль
@@ -446,19 +447,6 @@ app.get('/api/tariff/:id', function(req, res) {
             return res.send({ error: 'Server error' });
         }
     });
-    // var tariff = TariffModel
-    // .findById(req.params.id)
-    // .populate('_tariff_group')
-    // .exec(function (err, tariff) {
-    //     if (!err) {
-    //         console.log(tariff)
-    //         return res.send(tariff);
-    //     }
-    //   // console.log(tariff);
-    //   // console.log('The tariff_grour is %s', tariff._tariff_group);
-    // });
-
-    // return res.send(tariff);
 });
 
 app.put('/api/tariff/:id', function (req, res){
@@ -524,6 +512,10 @@ app.get('/api/current_month', function(req, res) {
           else
           {
             var date = new Date();
+            var period = new PeriodModel({
+              date:  new Date(date.getFullYear(), date.getMonth(), 1)
+            });
+            period.save();
             var current_month = new CurrentMonthModel({
               date:  new Date(date.getFullYear(), date.getMonth(), 1)
             });
@@ -589,6 +581,111 @@ app.put('/api/current_month', function (req, res){
                     res.send({ error: 'Server error' });
                 }
                 log.error('Internal error(%d): %s',res.statusCode,err.message);
+            }
+        });
+    });
+});
+
+//#################################
+//#######     Periods    ##########
+//#################################
+
+app.get('/api/period', function(req, res) {
+    return PeriodModel.findOne({ date: req.query.date }).exec(function (err, period) {
+        if (!err) {
+            return res.send(period);
+        } else {
+            res.statusCode = 500;
+            log.error('Internal error(%d): %s',res.statusCode,err.message);
+            console.log(err.message);
+            return res.send({ error: 'Server error' });
+        }
+    });
+});
+
+app.post('/api/period', function(req, res) {
+    var period = new PeriodModel({
+        date             : req.body.date,
+        finished         : req.body.finished,
+    });
+
+    period.save(function (err) {
+        if (!err) {
+            log.info("period created");
+            return res.send({ status: 'OK', period:period });
+        } else {
+            console.log(err);
+            if(err.name == 'ValidationError') {
+                res.statusCode = 400;
+                res.send({ error: 'Validation error' });
+            } else {
+                res.statusCode = 500;
+                res.send({ error: 'Server error' });
+            }
+            log.error('Internal error(%d): %s',res.statusCode,err.message);
+        }
+    });
+});
+
+app.get('/api/period/:id', function(req, res) {
+    return PeriodModel.findById(req.params.id, function (err, period) {
+        if(!period) {
+            res.statusCode = 404;
+            return res.send({ error: 'Not found' });
+        }
+        if (!err) {
+            return res.send(period);
+        } else {
+            res.statusCode = 500;
+            log.error('Internal error(%d): %s',res.statusCode,err.message);
+            return res.send({ error: 'Server error' });
+        }
+    });
+});
+
+app.put('/api/period/:id', function (req, res){
+    console.log('id = ' + req.params.id);
+    return PeriodModel.findById(req.params.id, function (err, period) {
+        if(!period) {
+            res.statusCode = 404;
+            return res.send({ error: 'Not found' });
+        }
+
+        period.date             = req.body.date;
+        period.finished         = req.body.finished;
+
+        return period.save(function (err) {
+            if (!err) {
+                log.info("period updated");
+                return res.send({ status: 'OK', period:period });
+            } else {
+                if(err.name == 'ValidationError') {
+                    res.statusCode = 400;
+                    res.send({ error: 'Validation error' });
+                } else {
+                    res.statusCode = 500;
+                    res.send({ error: 'Server error' });
+                }
+                log.error('Internal error(%d): %s',res.statusCode,err.message);
+            }
+        });
+    });
+});
+
+app.delete('/api/period/:id', function (req, res){
+    return PeriodModel.findById(req.params.id, function (err, period) {
+        if(!period) {
+            res.statusCode = 404;
+            return res.send({ error: 'Not found' });
+        }
+        return period.remove(function (err) {
+            if (!err) {
+                log.info("period removed");
+                return res.send({ status: 'OK' });
+            } else {
+                res.statusCode = 500;
+                log.error('Internal error(%d): %s',res.statusCode,err.message);
+                return res.send({ error: 'Server error' });
             }
         });
     });

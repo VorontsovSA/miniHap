@@ -45,4 +45,12 @@ angular.module('hap.services', ['ngResource']).
     return $resource('http://localhost:1337/api/current_month/', {}, {
       update: {method:'PUT', isArray:false}
     });
+  }).
+  factory('Periods', function($resource){
+    return $resource('http://localhost:1337/api/period/:id', {id: '@_id'}, {
+      query:  {method:'GET', isArray:false},
+      get:    {method:'GET', isArray:false},
+      update: {method:'PUT', isArray:false},
+      delete: {method:'DELETE', isArray:false},
+    });
   });
