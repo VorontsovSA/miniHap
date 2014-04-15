@@ -25,7 +25,7 @@
       </div>
       <div ng-controller="NavCtrl" class="navbar-collapse collapse">
         <ul class="nav navbar-nav">
-          <li ng-class="{active: $location.path() == '/objects'}"><a href="#/objects">Жилье</a></li>
+          <li ng-class="{active: $location.path() == '/buildings'}"><a href="#/objects">Жилье</a></li>
           <li ng-class="{active: $location.path() == '/tariffs' || $location.path() == '/tariffGroups'}" class="dropdown">
             <a href="" id="drop2" role="button" class="dropdown-toggle" data-toggle="dropdown">Тарифы<b class="caret"></b></a>
             <ul class="dropdown-menu" role="menu" aria-labelledby="drop2">
@@ -33,7 +33,7 @@
               <li ng-class="{active: $location.path() == '/tariffGroups'}"><a tabindex="-1" href="#/tariffGroups">Группы тарифов</a></li>
             </ul>
           </li>
-          <li ng-class="{active: $location.path() == '/charges'}"><a href="#/tariffGroups">Начисления</a></li>
+          <li ng-class="{active: $location.path() == '/charges'}"><a href="#/charges">Начисления</a></li>
         </ul>
         <ul class="nav navbar-nav navbar-right">
           <li><a ng-show="is_last_month && !is_first_month" href="" ng-click="clearMonth()"><span class="glyphicon glyphicon-step-backward"></span></a></li>
@@ -42,7 +42,6 @@
           <li><a ng-show="!is_last_month" href="" ng-click="nextMonth()"><span class="glyphicon glyphicon-forward"></span></a></li>
           <li><a ng-show="is_last_month" href="" ng-click="closeMonth()"><span class="glyphicon glyphicon-step-forward"></span></a></li>
         </ul>
-        {{current_period.date}}
       </div><!--/.nav-collapse -->
     </div>
   </div>

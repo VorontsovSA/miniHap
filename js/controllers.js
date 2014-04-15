@@ -4,8 +4,8 @@
 
 var hapControllers = angular.module('hap.controllers', []);
 
-hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'CurrentMonth', 'Period', '$dialogs', '$http', 'moment',
-  function($scope, $rootScope, $location, CurrentMonth, Period, $dialogs, $http, moment) {
+hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Period', '$dialogs', '$http', 'moment',
+  function($scope, $rootScope, $location, Period, $dialogs, $http, moment) {
   $scope.$location = $location;
   $rootScope.is_last_month = true;
   $rootScope.is_first_month = true;
@@ -28,6 +28,7 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Curr
     $rootScope.current_period = $rootScope.period_before;
     $rootScope.period_before = Period.getByDate({ 'date': moment($rootScope.current_period.date).add('months', -1).format()}, function (period) {
       if(period.date) $rootScope.is_first_month = false;
+      $location.path('/buildings');
     });
   };
   $scope.nextMonth = function() {
@@ -102,7 +103,7 @@ hapControllers.controller('BuildingsCtrl', ['$scope', 'Building', function($scop
   $scope.buildings = Building.query();
 }]);
 
-hapControllers.controller('BuildingsNewCtrl', ['$scope', '$routeParams', '$location', 'Building', 'Tariff', '$http', 
+hapControllers.controller('BuildingsNewCtrl', ['$scope', '$routeParams', '$location', 'Building', 'Tariff', '$http',
   function($scope, $routeParams, $location, Building, Tariff, $http) {
   $scope.tariffs  = Tariff.query();
   $scope.building = {};
@@ -137,46 +138,47 @@ hapControllers.controller('BuildingsEditCtrl', ['$scope', '$routeParams', '$loca
 }]);
 
 //#################################
-//#######   Appartments  ##########
+//#######   Apartments  ##########
 //#################################
 
-hapControllers.controller('AppartmentsCtrl', ['$scope', '$rootScope', '$routeParams', 'Building', 'Appartment', function($scope, $rootScope, $routeParams, Building, Appartment) {
+hapControllers.controller('ApartmentsCtrl', ['$scope', '$rootScope', '$routeParams', 'Building', 'Apartment', '$http',
+  function($scope, $rootScope, $routeParams, Building, Apartment, $http) {
   $scope.building = Building.get({id: $routeParams.building_id});
-  $scope.appartments = Appartment.query({building_id: $routeParams.building_id, period: $rootScope.current_month.date});
+  $scope.apartments = Apartment.query({building_id: $routeParams.building_id, period: $rootScope.current_period.date});
 }]);
 
-hapControllers.controller('AppartmentsNewCtrl', ['$scope', '$rootScope', '$routeParams', '$location', 'Building', 'Appartment', '$http',
-  function($scope, $rootScope, $routeParams, $location, Building, Appartment, $http) {
+hapControllers.controller('ApartmentsNewCtrl', ['$scope', '$rootScope', '$routeParams', '$location', 'Building', 'Apartment', '$http',
+  function($scope, $rootScope, $routeParams, $location, Building, Apartment, $http) {
   $scope.building = Building.get({id: $routeParams.building_id}, function(building) {
-    $scope.appartment = { _building: $scope.building._id, residents: 1, period: $rootScope.current_month.date };
+    $scope.apartment = { _building: $scope.building._id, residents: 1, period: $rootScope.current_period.date };
   });
-  $scope.save = function(appartment) {
-    console.log(appartment);
-    Appartment.save(appartment, function() {
-      $location.path('/appartments/' + $scope.building._id);
+  $scope.save = function(apartment) {
+    console.log(apartment);
+    Apartment.save(apartment, function() {
+      $location.path('/apartments/' + $scope.building._id);
     });
   };
 }]);
 
-hapControllers.controller('AppartmentsEditCtrl', ['$scope', '$routeParams', '$location', 'Building', 'Appartment', '$http', '$timeout', '$dialogs',
-  function($scope, $routeParams, $location, Building, Appartment, $http, $timeout, $dialogs) {
-  $scope.appartment  = Appartment.get({id: $routeParams.appartment_id}, function(appartment){
-    console.log(appartment);
-    $scope.building = Building.get({id: appartment._building});
+hapControllers.controller('ApartmentsEditCtrl', ['$scope', '$routeParams', '$location', 'Building', 'Apartment', '$http', '$timeout', '$dialogs',
+  function($scope, $routeParams, $location, Building, Apartment, $http, $timeout, $dialogs) {
+  $scope.apartment  = Apartment.get({id: $routeParams.apartment_id}, function(apartment){
+    console.log(apartment);
+    $scope.building = Building.get({id: apartment._building});
   });
 
   $scope.delete = function() {
     var dlg = $dialogs.confirm('Внимание','Действительно хотите удалить квартиру?');
     dlg.result.then(function(btn){
-      $scope.appartment.$delete(function() {
-        $location.path('/appartments/' + $scope.building._id);
+      $scope.apartment.$delete(function() {
+        $location.path('/apartments/' + $scope.building._id);
       });
     },function(btn){});
   };
 
   $scope.save = function() {
-    $scope.appartment.$update(function() {
-      $location.path('/appartments/' + $scope.building._id);
+    $scope.apartment.$update(function() {
+      $location.path('/apartments/' + $scope.building._id);
     });
   };
 }]);
@@ -285,4 +287,172 @@ hapControllers.controller('TariffsEditCtrl', ['$scope', '$routeParams', '$locati
       $location.path('/tariffs');
     });
   };
+}]);
+
+//#################################
+//#######     Charges    ##########
+//#################################
+
+hapControllers.controller('ChargesCtrl', ['$scope', 'Building', function($scope, Building) {
+  $scope.buildings = Building.query();
+}]);
+
+hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$routeParams', '$location', 'Building', 'Apartment', '$http',
+  function($scope, $rootScope, $routeParams, $location, Building, Apartment, $http) {
+  $scope.building = Building.get({id: $routeParams.building_id});
+
+  $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + $routeParams.building_id}).
+  success(function(data, status) {
+    var tariff_group_ids = [];
+    angular.forEach(data.tariffs, function(tariff, key){
+      tariff_group_ids.push(tariff._tariff_group._id);
+    });
+    console.log(data);
+    var apartments = Apartment.query({building_id: $routeParams.building_id, period: $rootScope.current_period.date}, function(apartments)
+    {
+      $scope.apts         = {};
+      $scope.residents    = 0;
+      $scope.space        = 0;
+      $scope.common_space = 0;
+      apartments.forEach(function(apt) {
+        $scope.apts[apt._id] = {
+          number: apt.number,
+          contractor: apt.contractor.last_name + ' ' + apt.contractor.first_name + ' ' + apt.contractor.second_name,
+          residents    : apt.residents,
+          space        : apt.space,
+          common_space : apt.common_space,
+          charges: {}
+        };
+        $scope.residents    += apt.residents;
+        $scope.space        += apt.space;
+        $scope.common_space += apt.common_space;
+      });
+      console.log('apts');
+      console.log($scope.apts);
+      $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_building/' + $routeParams.building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
+      success(function(charges, status) {
+        // console.log('STARTED');
+        charges.forEach(function(charge) {
+          console.log(charge);
+          console.log($scope.apts);
+          $scope.apts[charge._apartment].charges[charge._tariff_group] = {
+            has_counter:         charge.has_counter,
+            norm:                charge.norm,
+            volume:              charge.volume,
+            value:               charge.value,
+            reappraisal_auto:    charge.reappraisal_auto,
+            reappraisal_manual:  charge.reappraisal_manual
+          };
+        })
+        // console.log($scope.apts);
+        // console.log('FINISHED');
+        $scope.tabs = {};
+        angular.forEach(data.tariffs, function(tariff, key){
+          var calc_var = 0;
+          if(tariff._tariff_group.use_residents) calc_var    += $scope.residents;
+          if(tariff._tariff_group.use_space) calc_var        += $scope.space;
+          if(tariff._tariff_group.use_common_space) calc_var += $scope.common_space;
+          $scope.tabs[tariff._tariff_group._id] = {
+            title: tariff._tariff_group.name,
+            tariff_group: tariff._tariff_group,
+            tariff_group_id: tariff._tariff_group._id,
+            tariff: tariff,
+            by_volume: true,
+            volume: 0,
+            norm: 0,
+            calc_var: calc_var
+          };
+          // Wathing common trigger
+          var updateCharges = function() {
+            if($scope.tabs[tariff._tariff_group._id].by_volume == 1) {
+              console.log('Update charges for volume');
+              var max_value = 0;
+              var max_key   = 0;
+              var real_sum  = 0;
+              var to_share  = $scope.tabs[tariff._tariff_group._id].volume;
+              var calc_var  = $scope.tabs[tariff._tariff_group._id].calc_var;
+              angular.forEach($scope.apts, function(apt, key){
+                if(apt.charges[tariff._tariff_group._id].has_counter)
+                {
+                  to_share -= apt.charges[tariff._tariff_group._id].volume;
+                  if(tariff._tariff_group.use_residents) calc_var    -= $scope.apts[key].residents;
+                  if(tariff._tariff_group.use_space) calc_var        -= $scope.apts[key].space;
+                  if(tariff._tariff_group.use_common_space) calc_var -= $scope.apts[key].common_space;
+                }
+              });
+              var norm = (to_share/calc_var).toFixed(4);
+              angular.forEach($scope.apts, function(apt, key){
+                var calc_var = 0;
+                if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
+                if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
+                if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
+                $scope.apts[key].charges[tariff._tariff_group._id].norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : norm;
+                if(!apt.charges[tariff._tariff_group._id].has_counter) $scope.apts[key].charges[tariff._tariff_group._id].volume = (norm * calc_var).toFixed(4);
+                if(!apt.charges[tariff._tariff_group._id].has_counter && $scope.apts[key].charges[tariff._tariff_group._id].volume > max_value)
+                {
+                  max_value = $scope.apts[key].charges[tariff._tariff_group._id].volume;
+                  max_key   = key;
+                }
+                real_sum += Number($scope.apts[key].charges[tariff._tariff_group._id].volume);
+                $scope.apts[key].charges[tariff._tariff_group._id].value = ($scope.apts[key].charges[tariff._tariff_group._id].volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
+              });
+              if (real_sum != $scope.tabs[tariff._tariff_group._id].volume) {
+                console.log($scope.tabs[tariff._tariff_group._id].volume);
+                console.log(real_sum);
+                console.log(max_key);
+                console.log('Repaired float error ' + ($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4) + ' for ' + $scope.apts[max_key].number);
+                $scope.apts[max_key].charges[tariff._tariff_group._id].volume = (Number($scope.apts[max_key].charges[tariff._tariff_group._id].volume) + Number(($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4))).toFixed(4);
+              };
+            }
+            else
+            {
+              angular.forEach($scope.apts, function(apt, key){
+                var calc_var = 0;
+                if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
+                if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
+                if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
+                $scope.apts[key].charges[tariff._tariff_group._id].norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : $scope.tabs[tariff._tariff_group._id].norm;
+                if(!apt.charges[tariff._tariff_group._id].has_counter)$scope.apts[key].charges[tariff._tariff_group._id].volume = ($scope.tabs[tariff._tariff_group._id].norm * calc_var).toFixed(4);
+                $scope.apts[key].charges[tariff._tariff_group._id].value = ($scope.apts[key].charges[tariff._tariff_group._id].volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
+              });
+            }
+          };
+          $scope.$watch("tabs['" + tariff._tariff_group._id + "'].by_volume", function( newValue ) {
+            // console.log( "$watch : " + newValue );
+            updateCharges();
+          });
+          // Wathing common volume
+          $scope.$watch("tabs['" + tariff._tariff_group._id + "'].volume", function( newValue ) {
+            console.log('Update charges for volume field');
+            // console.log( "$watch : " + newValue );
+            updateCharges();
+          });
+          // Watching common norm
+          $scope.$watch("tabs['" + tariff._tariff_group._id + "'].norm", function( newValue ) {
+            // console.log( "$watch : " + newValue );
+            updateCharges();
+          });
+          // Watching apts
+          angular.forEach($scope.apts, function(apt, key){
+            $scope.$watch("apts['" + key +"'].charges['" + tariff._tariff_group._id + "'].has_counter", function( newValue ) {
+              // console.log( "$watch : " + newValue );
+              updateCharges();
+            });
+            $scope.$watch("apts['" + key +"'].charges['" + tariff._tariff_group._id + "'].volume", function( newValue ) {
+              // console.log( "$watch : " + newValue );
+              updateCharges();
+            });
+          });
+        });
+      }).
+      error(function(data, status) {
+        $scope.data = data || "Request failed";
+        $scope.status = status;
+      });
+    });
+  }).
+  error(function(data, status) {
+    $scope.data = data || "Request failed";
+    $scope.status = status;
+  });
 }]);

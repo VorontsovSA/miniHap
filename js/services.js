@@ -17,8 +17,8 @@ angular.module('hap.services', ['ngResource']).
       delete: {method:'DELETE', isArray:false},
     });
   }).
-  factory('Appartment', function($resource){
-    return $resource('http://localhost:1337/api/appartment/:id', {id: '@_id'}, {
+  factory('Apartment', function($resource){
+    return $resource('http://localhost:1337/api/apartment/:id', {id: '@_id'}, {
       query:  {method:'GET', isArray:true},
       get:    {method:'GET', isArray:false},
       update: {method:'PUT', isArray:false},

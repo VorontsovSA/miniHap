@@ -1,0 +1,70 @@
+<h3 class="page-header">Внесение показаний по ул.{{building.street}} дом.{{building.number}}</h3>
+
+<tabset>
+  <tab ng-repeat="tab in tabs" active="tab.active" disabled="tab.disabled">
+    <tab-heading>
+      {{tab.title}}
+    </tab-heading>
+    <br>
+    <table class="table table-bordered table-condensed">
+      <tr>
+        <th>Тариф</th>
+        <td>{{tab.tariff.rate}}</td>
+      </tr>
+      <tr>
+        <th>Проживает</th>
+        <td>{{residents}}</td>
+      </tr>
+      <tr>
+        <th>Площадь</th>
+        <td>{{space}}</td>
+      </tr>
+      <tr>
+        <th>Площадь МОП</th>
+        <td>{{common_space}}</td>
+      </tr>
+      <tr>
+        <th>Тип расчета</th>
+        <td>
+          <label><input type="radio" ng-model="tab.by_volume" value="1" /> По показаниям</label>
+          <label><input type="radio" ng-model="tab.by_volume" value="0" /> По нормативу</label>
+        </td>
+      </tr>
+      <tr>
+        <th>Общедомовые показания</th>
+        <td><input type="number" class="form-control" ng-model="tab.volume" ng-show="tab.by_volume == 1"></td>
+      </tr>
+      <tr>
+        <th>Норматив</th>
+        <td><input type="number" class="form-control" ng-model="tab.norm" ng-show="tab.by_volume == 0"></td>
+      </tr>
+    </table>
+    <table class="table table-condensed">
+      <thead>
+        <tr>
+          <th>Номер</th>
+          <th>ФИО</th>
+          <th>Есть счетчик</th>
+          <th>Норма ({{tab.tariff_group.norm_dimension}})</th>
+          <th>Объем ({{tab.tariff_group.value_dimension}})</th>
+          <th>Начисление</th>
+          <th>Перерасчет автоматический</th>
+          <th>Перерасчет ручной</th>
+        </tr>
+      </thead>
+      <tr ng-repeat="(aid, apt) in apts">
+        <td>{{apt.number}}</td>
+        <td>{{apt.contractor}}</td>
+        <td><input ng-model="apt.charges[tab.tariff_group_id].has_counter" type="checkbox"></td>
+        <td>{{apt.charges[tab.tariff_group_id].norm}}</td>
+        <td>
+          <input ng-show="apt.charges[tab.tariff_group_id].has_counter" class="form-control" ng-model="apt.charges[tab.tariff_group_id].volume" smartFloat>
+          <span ng-show="!apt.charges[tab.tariff_group_id].has_counter">{{apt.charges[tab.tariff_group_id].volume}}</span>
+        </td>
+        <td>{{apt.charges[tab.tariff_group_id].value}}</td>
+        <td>{{apt.charges[tab.tariff_group_id].reappraisal_auto}}</td>
+        <td><input type="number" class="form-control" ng-model="apt.charges[tab.tariff_group_id].reappraisal_manual"></td>
+      </tr>
+    </table>
+  </tab>
+</tabset>

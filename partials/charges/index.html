@@ -1,0 +1,25 @@
+<h3 class="page-header">Внесение показаний</h3>
+
+<p class="lead">Выберите дом для ввода показаний</p>
+
+<!-- <ul class="nav nav-pills nav-stacked" ng-class="{'nav-stacked': vertical, 'nav-justified': justified}">
+  <li heading="Ул.{{building.street}} дом.{{building.number}}" class="ng-isolate-scope"  ng-repeat="building in buildings">
+    <a href="#/charges/building/{{building._id}}" >Ул.{{building.street}} дом.{{building.number}}</a>
+  </li>
+</ul> -->
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Адрес</th>
+      <th>Описание</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="building in buildings">
+      <td><a href="#/charges/building/{{building._id}}">Ул.{{building.street}} дом.{{building.number}}</a></td>
+      <td>{{building.description}}</td>
+      <td><a class="pull-right" href="#/buildings/edit/{{building._id}}"><span class="glyphicon glyphicon-pencil"></span></a></td>
+    </tr>
+  </tbody>
+</table>

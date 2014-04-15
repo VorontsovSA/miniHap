@@ -1,0 +1,29 @@
+<h3 class="page-header">Список квартир по ул.{{building.street}} дом.{{building.number}}</h3>
+
+<a href="#/apartments/new/{{building._id}}" class="btn btn-primary">Создать</a>
+
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Квартира</th>
+      <th>ФИО</th>
+      <th>Площадь</th>
+      <th>Площадь МОП</th>
+      <th>Количество проживающих</th>
+      <th>Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="apartment in apartments">
+      <td>{{apartment.number}}</td>
+      <td>{{apartment.contractor.last_name}} {{apartment.contractor.first_name}} {{apartment.contractor.second_name}}</td>
+      <td>{{apartment.space}}</td>
+      <td>{{apartment.common_space}}</td>
+      <td>{{apartment.residents}}</td>
+      <td>
+        <a class="btn" href="#/apartments/editchanges/{{apartment._id}}"><span class="glyphicon glyphicon-time"></span></a>
+        <a class="btn" href="#/apartments/edit/{{apartment._id}}"><span class="glyphicon glyphicon-pencil"></span></a>
+      </td>
+    </tr>
+  </tbody>
+</table>

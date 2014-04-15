@@ -6,13 +6,13 @@
 var express            = require('express');
 var path               = require('path'); // модуль для парсинга пути
 var log                = require('./libs/log')(module);
-// var ArticleModel       = require('./libs/mongoose').ArticleModel;
 var TariffGroupModel   = require('./libs/mongoose').TariffGroupModel;
 var TariffModel        = require('./libs/mongoose').TariffModel;
 var BuildingModel      = require('./libs/mongoose').BuildingModel;
-var AppartmentModel    = require('./libs/mongoose').AppartmentModel;
+var ApartmentModel     = require('./libs/mongoose').ApartmentModel;
 var PeriodModel        = require('./libs/mongoose').PeriodModel;
-var app = express();
+var ChargeModel        = require('./libs/mongoose').ChargeModel;
+var app                = express();
 
 app.use(express.logger('dev')); // выводим все запросы со статусами в консоль
 // app.use(express.bodyParser()); // стандартный модуль, для парсинга JSON в запросах
@@ -37,12 +37,135 @@ app.use(function(err, req, res, next){
     return;
 });
 
+//#################################
+//##### independent commands ######
+//#################################
+
 app.get('/ErrorExample', function(req, res, next){
     next(new Error('Random error!'));
 });
 
 app.get('/api', function (req, res) {
     res.send('API is running');
+});
+// TariffGroups for building
+app.get('/api/tariff_groups_for_building/:id', function(req, res) {
+    return BuildingModel.findById(req.params.id).exec(function (err, building) {
+        if (!err) {
+            building.populate({ path: 'tariffs', options: { sort: 'number' }, model: TariffModel }, function(err, building) {
+                building.populate({ path: 'tariffs._tariff_group', model: TariffGroupModel }, function(err, building) {
+                    return res.send(building);
+                });
+            });
+
+            // BuildingModel.populate(building, [{ path: 'tariffs', options: { sort: 'number' }, model: TariffModel }], function(err, building) {
+            //     TariffGroupModel.populate(building, [{ path: 'tariffs._tariff_group' }], function(err, building) {
+            //         return res.send(building);
+            //     });
+            // });
+
+            // var opts = [
+            //     { path: 'tariffs', options: { sort: 'number' }, model: TariffModel },
+            //     { path: 'tariffs._tariff_group', model: TariffGroupModel }];
+            // BuildingModel.populate(building, opts, function(err, buildings) {
+            //     console.log(buildings);
+            //     return res.send(buildings);
+            // });
+            //return res.send(building);
+        } else {
+            res.statusCode = 500;
+            log.error('Internal error(%d): %s',res.statusCode,err.message);
+            return res.send({ error: 'Server error' });
+        }
+    });
+});
+// Charges for building
+app.get('/api/charges_for_building/:id/:tariff_groups/:period', function(req, res) {
+  var tariff_groups_ids = req.params.tariff_groups.split(',');
+  var apartments_ids = [];
+  // Get apt ids
+  ApartmentModel.find({'_building' : req.params.id, 'period' : req.params.period}).select('_id').sort('number').exec(function (err, apartments) {
+    if (!err) {
+      apartments.forEach(function(apartment, key){
+        apartments_ids.push(apartment._id.toString());
+      });
+      // Remove charges for unexisted tariff groups
+      ChargeModel.remove({ _apartment: { $in: apartments_ids }, _tariff_group: { $nin: tariff_groups_ids }, 'period' : req.params.period }, function() {
+        console.log('Charges removed');
+        // console.log(apartments_ids);
+        function processTariffGroup(tg_ids, apt_ids)
+        {
+          console.log('processTariffGroup');
+          // console.log(apartments_ids);
+          var tariff_group_id = tg_ids.pop();
+          // console.log({1: apartments_ids, 2: tariff_group_id, 3: req.params.period});
+          ChargeModel.find({ _apartment: { $in: apartments_ids }, _tariff_group: tariff_group_id, 'period' : req.params.period }, function(err, charges) {
+            // console.log(apartments_ids);
+            // console.log('charges for ' + tariff_group_id + ': ' + charges.length);
+            if(charges)
+            {
+              // console.log('apt_ids before' + apt_ids);
+              charges.forEach( function(charge) {
+                var index = apt_ids.indexOf(charge._id);
+                apt_ids.splice(index, 1);
+              });
+              // console.log('apt_ids after' + apt_ids);
+            }
+            // console.log('tariff_group_id = ' + tariff_group_id);
+            processCreateingCharges(tg_ids, apt_ids, tariff_group_id);
+          });
+        };
+        function processCreateingCharges(tg_ids, apt_ids, tariff_group_id)
+        {
+          console.log('processCreateingCharges');
+          // console.log(apartments_ids);
+          var to_create = [];
+          apt_ids.forEach(function(id){
+            to_create.push({
+              has_counter:         false,
+              norm:                null,
+              volume:              0,
+              value:               null,
+              reappraisal_auto:    0,
+              reappraisal_manual:  0,
+              _apartment:          id,
+              _tariff_group:       tariff_group_id,
+              period:              req.params.period
+            });
+          });
+          // console.log(to_create);
+          ChargeModel.create(to_create, function(charges) {
+            console.log('Charges created');
+            if(tg_ids.length) {
+              processTariffGroup(tg_ids, apartments_ids.concat());
+            }
+            else
+            {
+              ChargeModel.find({ _apartment: { $in: apartments_ids }, _tariff_group: { $in: tariff_groups_ids }, 'period' : req.params.period }, function(err, charges) {
+                // console.log(apartments_ids);
+                // console.log({ _apartment: apartments_ids, _tariff_group: tariff_groups_ids, 'period' : req.params.period });
+                return res.send(charges);
+              });
+            }
+          });
+        };
+        processTariffGroup(tariff_groups_ids.concat(), apartments_ids.concat());
+      })
+    } else {
+      console.log({ error: 'Internal error(%d): %s' + res.statusCode + err.message });
+    }
+  });
+  // Init charges if doesn't exist
+  //return res.send({status: 'OK'});
+  // 1.  Получить список групп тарифов, которых нет в доме.
+  // 2.  Получить и удалить записи по начислению по группам тарифов, которых нет в доме.
+  // 3.  Инициировать начисления по группам тарифов, если какие-то отсутствуют.
+  // 4.  Получить все начисления по существующим группам тарифов
+  // 5.  Переход в фронтенд
+  // 6.  Заполнить структуры для вывода во вкладки групп тарифов
+  // 7.  Отслеживать изменение структуры групп тарифов
+  // 8.  Отправить измененную группу тарифов на сохранение
+  // 9.  Получить в бэкенде структуру. Разобрать и сохранить
 });
 
 //#################################
@@ -154,16 +277,16 @@ app.delete('/api/building/:id', function (req, res){
 });
 
 //#################################
-//#######   Appartment   ##########
+//########   Apartment   ##########
 //#################################
 
-app.get('/api/appartment', function(req, res) {
+app.get('/api/apartment', function(req, res) {
     console.log(req);
     console.log(req.params.building_id);
-    return AppartmentModel.find({'_building' : req.query.building_id, 'period' : req.query.period}).sort('number').exec(function (err, appartments) {
+    return ApartmentModel.find({'_building' : req.query.building_id, 'period' : req.query.period}).sort('number').exec(function (err, apartments) {
         if (!err) {
           console.log("DDDD")
-            return res.send(appartments);
+            return res.send(apartments);
         } else {
             res.statusCode = 500;
             log.error('Internal error(%d): %s',res.statusCode,err.message);
@@ -172,8 +295,8 @@ app.get('/api/appartment', function(req, res) {
     });
 });
 
-app.post('/api/appartment', function(req, res) {
-    var appartment = new AppartmentModel({
+app.post('/api/apartment', function(req, res) {
+    var apartment = new ApartmentModel({
         number           : req.body.number,
         contractor       : req.body.contractor,
         space            : req.body.space,
@@ -183,10 +306,10 @@ app.post('/api/appartment', function(req, res) {
         period           : req.body.period,
     });
 
-    appartment.save(function (err) {
+    apartment.save(function (err) {
         if (!err) {
-            log.info("appartment created");
-            return res.send({ status: 'OK', appartment:appartment });
+            log.info("apartment created");
+            return res.send({ status: 'OK', apartment:apartment });
         } else {
             console.log(err);
             if(err.name == 'ValidationError') {
@@ -201,14 +324,14 @@ app.post('/api/appartment', function(req, res) {
     });
 });
 
-app.get('/api/appartment/:id', function(req, res) {
-    return AppartmentModel.findById(req.params.id, function (err, appartment) {
-        if(!appartment) {
+app.get('/api/apartment/:id', function(req, res) {
+    return ApartmentModel.findById(req.params.id, function (err, apartment) {
+        if(!apartment) {
             res.statusCode = 404;
             return res.send({ error: 'Not found' });
         }
         if (!err) {
-            return res.send(appartment);
+            return res.send(apartment);
         } else {
             res.statusCode = 500;
             log.error('Internal error(%d): %s',res.statusCode,err.message);
@@ -217,26 +340,26 @@ app.get('/api/appartment/:id', function(req, res) {
     });
 });
 
-app.put('/api/appartment/:id', function (req, res){
+app.put('/api/apartment/:id', function (req, res){
     console.log('id = ' + req.params.id);
-    return AppartmentModel.findById(req.params.id, function (err, appartment) {
-        if(!appartment) {
+    return ApartmentModel.findById(req.params.id, function (err, apartment) {
+        if(!apartment) {
             res.statusCode = 404;
             return res.send({ error: 'Not found' });
         }
 
-        appartment.number           = req.body.number;
-        appartment.contractor       = req.body.contractor ;
-        appartment.space            = req.body.space;
-        appartment.common_space     = req.body.common_space;
-        appartment.residents        = req.body.residents;
-        appartment._building        = req.body._building;
-        appartment.period           = req.body.period;
+        apartment.number           = req.body.number;
+        apartment.contractor       = req.body.contractor ;
+        apartment.space            = req.body.space;
+        apartment.common_space     = req.body.common_space;
+        apartment.residents        = req.body.residents;
+        apartment._building        = req.body._building;
+        apartment.period           = req.body.period;
 
-        return appartment.save(function (err) {
+        return apartment.save(function (err) {
             if (!err) {
-                log.info("appartment updated");
-                return res.send({ status: 'OK', appartment:appartment });
+                log.info("apartment updated");
+                return res.send({ status: 'OK', apartment:apartment });
             } else {
                 if(err.name == 'ValidationError') {
                     res.statusCode = 400;
@@ -251,15 +374,15 @@ app.put('/api/appartment/:id', function (req, res){
     });
 });
 
-app.delete('/api/appartment/:id', function (req, res){
-    return AppartmentModel.findById(req.params.id, function (err, appartment) {
-        if(!appartment) {
+app.delete('/api/apartment/:id', function (req, res){
+    return ApartmentModel.findById(req.params.id, function (err, apartment) {
+        if(!apartment) {
             res.statusCode = 404;
             return res.send({ error: 'Not found' });
         }
-        return appartment.remove(function (err) {
+        return apartment.remove(function (err) {
             if (!err) {
-                log.info("appartment removed");
+                log.info("apartment removed");
                 return res.send({ status: 'OK' });
             } else {
                 res.statusCode = 500;
@@ -633,6 +756,10 @@ app.delete('/api/period/one/:id', function (req, res){
         });
     });
 });
+
+//#################################
+//#################################
+//#################################
 
 app.listen(1337, function(){
     console.log('Express server listening on port 1337');

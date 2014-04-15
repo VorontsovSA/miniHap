@@ -1,0 +1,48 @@
+<h3 class="page-header">Добавление квартиры по ул.{{building.street}} дом.{{building.number}}</h3>
+
+<form name="form" class="form-horizontal" role="form">
+  <div class="form-group">
+    <label class="col-sm-2 control-label" >Квартира</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" ng-model="apartment.number" required>
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="col-sm-2 control-label" >Фамилия</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" ng-model="apartment.contractor.last_name" required>
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="col-sm-2 control-label" >Имя</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" ng-model="apartment.contractor.first_name">
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="col-sm-2 control-label" >Отчество</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" ng-model="apartment.contractor.second_name">
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="col-sm-2 control-label" >Площадь</label>
+    <div class="col-sm-10">
+      <input type="number" class="form-control" ng-model="apartment.space" required smartFloat value="0">
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="col-sm-2 control-label" >Площадь МОП</label>
+    <div class="col-sm-10">
+      <input type="number" class="form-control" ng-model="apartment.common_space" required smartFloat value="0">
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="col-sm-2 control-label" >Проживающих</label>
+    <div class="col-sm-10">
+      <input type="number" class="form-control" ng-model="apartment.residents" required integer value="1">
+    </div>
+  </div>
+  <button ng-disabled="form.$invalid" type="submit" class="col-sm-offset-2 btn btn-primary" ng-click="save(apartment)">Сохранить</button>
+  <a class="btn btn-default" href="#/apartments/{{building._id}}">Вернуться к списку</a>
+</form>
