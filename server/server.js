@@ -176,7 +176,51 @@ app.get('/api/charges_for_building/:id/:tariff_groups/:period', function(req, re
   // 8.  Отправить измененную группу тарифов на сохранение
   // 9.  Получить в бэкенде структуру. Разобрать и сохранить
 });
+// Saving charges
+app.post('/api/save_charges_for_building', function(req, res) {
+  var charges = req.body.charges;
+  console.log(charges);
+  function saveCharge(charges) {
+    var charge = charges.pop();
+    ChargeModel.findById(charge._id, function (err, gotcharge) {
+      if(!gotcharge) {
+          res.statusCode = 404;
+          return res.send({ error: 'Not found' });
+      }
 
+      gotcharge.has_counter =        charge.has_counter;
+      gotcharge.norm =               charge.norm;
+      gotcharge.volume =             charge.volume;
+      gotcharge.value =              charge.value;
+      gotcharge.reappraisal_auto =   charge.reappraisal_auto;
+      gotcharge.reappraisal_manual = charge.reappraisal_manual;
+
+      return gotcharge.save(function (err) {
+          if (!err) {
+              log.info("charge updated");
+              console.log('Charge updated');
+              if(charges.length) {
+                saveCharge(charges);
+              }
+              else
+              {
+                res.send('OK');
+              }
+          } else {
+              if(err.name == 'ValidationError') {
+                  res.statusCode = 400;
+                  res.send({ error: 'Validation error' });
+              } else {
+                  res.statusCode = 500;
+                  res.send({ error: 'Server error' });
+              }
+              log.error('Internal error(%d): %s',res.statusCode,err.message);
+          }
+      });
+    });
+  }
+  saveCharge(charges);
+});
 //#################################
 //#######    Buildings   ##########
 //#################################
@@ -421,6 +465,7 @@ app.get('/api/tariff_group', function(req, res) {
 app.post('/api/tariff_group', function(req, res) {
     var tariff_group = new TariffGroupModel({
         name             : req.body.name,
+        use_norm         : req.body.use_norm,
         use_space        : req.body.use_space,
         use_common_space : req.body.use_common_space,
         use_residents    : req.body.use_residents,
@@ -474,6 +519,7 @@ app.put('/api/tariff_group/:id', function (req, res){
         }
 
         tariff_group.name             = req.body.name;
+        tariff_group.use_norm         = req.body.use_norm;
         tariff_group.use_space        = req.body.use_space;
         tariff_group.use_common_space = req.body.use_common_space;
         tariff_group.use_residents    = req.body.use_residents;

@@ -19,7 +19,7 @@ config(['$routeProvider', function($routeProvider) {
   $routeProvider.when('/buildings/edit/:building_id', {templateUrl: 'partials/buildings/edit.html', controller: 'BuildingsEditCtrl'});
   $routeProvider.when('/apartments/:building_id', {templateUrl: 'partials/apartments/index.html', controller: 'ApartmentsCtrl'});
   $routeProvider.when('/apartments/new/:building_id', {templateUrl: 'partials/apartments/new.html', controller: 'ApartmentsNewCtrl'});
-  $routeProvider.when('/apartments/edit/:appartment_id', {templateUrl: 'partials/apartments/edit.html', controller: 'ApartmentsEditCtrl'});
+  $routeProvider.when('/apartments/edit/:apartment_id', {templateUrl: 'partials/apartments/edit.html', controller: 'ApartmentsEditCtrl'});
   $routeProvider.when('/tariffGroups', {templateUrl: 'partials/tariffGroups/index.html', controller: 'TariffGroupsCtrl'});
   $routeProvider.when('/tariffGroups/new', {templateUrl: 'partials/tariffGroups/new.html', controller: 'TariffGroupsNewCtrl'});
   $routeProvider.when('/tariffGroups/edit/:tariff_group_id', {templateUrl: 'partials/tariffGroups/edit.html', controller: 'TariffGroupsEditCtrl'});

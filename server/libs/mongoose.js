@@ -29,6 +29,7 @@ var Period = new Schema({
 
 var TariffGroup = new Schema({
   name:                String,
+  use_norm:            { type: Boolean, default: false},
   use_space:           { type: Boolean, default: false},
   use_common_space:    { type: Boolean, default: false},
   use_residents:       { type: Boolean, default: false},

@@ -23,18 +23,18 @@
         <th>Площадь МОП</th>
         <td>{{common_space}}</td>
       </tr>
-      <tr>
+      <tr ng-show="tab.tariff_group.use_norm">
         <th>Тип расчета</th>
         <td>
           <label><input type="radio" ng-model="tab.by_volume" value="1" /> По показаниям</label>
           <label><input type="radio" ng-model="tab.by_volume" value="0" /> По нормативу</label>
         </td>
       </tr>
-      <tr>
+      <tr ng-show="tab.tariff_group.use_norm">
         <th>Общедомовые показания</th>
         <td ng-class="(tab.by_volume == 1 ? 'nopad' : '')"><input type="number" class="form-control" ng-model="tab.volume" ng-show="tab.by_volume == 1"></td>
       </tr>
-      <tr>
+      <tr ng-show="tab.tariff_group.use_norm">
         <th>Норматив</th>
         <td><input type="number" class="form-control" ng-model="tab.norm" ng-show="tab.by_volume == 0"></td>
       </tr>

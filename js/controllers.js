@@ -337,6 +337,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
           // console.log(charge);
           // console.log($scope.apts);
           $scope.apts[charge._apartment].charges[charge._tariff_group] = {
+            _id:                 charge._id,
             has_counter:         charge.has_counter,
             norm:                charge.norm,
             volume:              charge.volume,
@@ -373,59 +374,77 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
           // console.log($scope.tabs[tariff._tariff_group._id]);
           // Wathing common trigger
           var updateCharges = function() {
-            if($scope.tabs[tariff._tariff_group._id].by_volume == 1) {
-              // console.log('Update charges for volume');
-              var max_value = null;
-              var max_key   = null;
-              var real_sum  = 0;
-              var to_share  = $scope.tabs[tariff._tariff_group._id].volume;
-              var calc_var  = $scope.tabs[tariff._tariff_group._id].calc_var;
-              angular.forEach($scope.apts, function(apt, key){
-                if(apt.charges[tariff._tariff_group._id].has_counter)
-                {
-                  to_share -= apt.charges[tariff._tariff_group._id].volume;
-                  if(tariff._tariff_group.use_residents) calc_var    -= $scope.apts[key].residents;
-                  if(tariff._tariff_group.use_space) calc_var        -= $scope.apts[key].space;
-                  if(tariff._tariff_group.use_common_space) calc_var -= $scope.apts[key].common_space;
-                }
-              });
-              var norm = (to_share/calc_var).toFixed(4);
+            if(!tariff._tariff_group.use_norm) {
+              console.log('Not Use norm');
               angular.forEach($scope.apts, function(apt, key){
                 var calc_var = 0;
                 if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
                 if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
                 if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
-                $scope.apts[key].charges[tariff._tariff_group._id].norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : norm;
-                if(!apt.charges[tariff._tariff_group._id].has_counter) $scope.apts[key].charges[tariff._tariff_group._id].volume = (norm * calc_var).toFixed(4);
-                if(!apt.charges[tariff._tariff_group._id].has_counter && ($scope.apts[key].charges[tariff._tariff_group._id].volume > max_value || max_value == null))
-                {
-                  max_value = $scope.apts[key].charges[tariff._tariff_group._id].volume;
-                  max_key   = key;
-                }
-                real_sum += Number($scope.apts[key].charges[tariff._tariff_group._id].volume);
+                $scope.apts[key].charges[tariff._tariff_group._id].has_counter = false;
+                $scope.apts[key].charges[tariff._tariff_group._id].norm = '';
+                $scope.apts[key].charges[tariff._tariff_group._id].volume = (calc_var).toFixed(4);
                 $scope.apts[key].charges[tariff._tariff_group._id].value = ($scope.apts[key].charges[tariff._tariff_group._id].volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
               });
-              if (real_sum != $scope.tabs[tariff._tariff_group._id].volume) {
-                // console.log($scope.tabs[tariff._tariff_group._id].volume);
-                // console.log(real_sum);
-                // console.log(max_key);
-                // console.log('Repaired float error ' + ($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4) + ' for ' + $scope.apts[max_key].number);
-                $scope.apts[max_key].charges[tariff._tariff_group._id].volume = (Number($scope.apts[max_key].charges[tariff._tariff_group._id].volume) + Number(($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4))).toFixed(4);
-              };
             }
             else
             {
-              angular.forEach($scope.apts, function(apt, key){
-                var calc_var = 0;
-                if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
-                if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
-                if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
-                $scope.apts[key].charges[tariff._tariff_group._id].norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : $scope.tabs[tariff._tariff_group._id].norm;
-                if(!apt.charges[tariff._tariff_group._id].has_counter)$scope.apts[key].charges[tariff._tariff_group._id].volume = ($scope.tabs[tariff._tariff_group._id].norm * calc_var).toFixed(4);
-                $scope.apts[key].charges[tariff._tariff_group._id].value = ($scope.apts[key].charges[tariff._tariff_group._id].volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
-              });
+              console.log('Use norm');
+              if($scope.tabs[tariff._tariff_group._id].by_volume == 1) {
+                // console.log('Update charges for volume');
+                var max_value = null;
+                var max_key   = null;
+                var real_sum  = 0;
+                var to_share  = $scope.tabs[tariff._tariff_group._id].volume;
+                var calc_var  = $scope.tabs[tariff._tariff_group._id].calc_var;
+                angular.forEach($scope.apts, function(apt, key){
+                  if(apt.charges[tariff._tariff_group._id].has_counter)
+                  {
+                    to_share -= apt.charges[tariff._tariff_group._id].volume;
+                    if(tariff._tariff_group.use_residents) calc_var    -= $scope.apts[key].residents;
+                    if(tariff._tariff_group.use_space) calc_var        -= $scope.apts[key].space;
+                    if(tariff._tariff_group.use_common_space) calc_var -= $scope.apts[key].common_space;
+                  }
+                });
+                var norm = (to_share/calc_var).toFixed(4);
+                angular.forEach($scope.apts, function(apt, key){
+                  var calc_var = 0;
+                  if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
+                  if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
+                  if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
+                  $scope.apts[key].charges[tariff._tariff_group._id].norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : norm;
+                  if(!apt.charges[tariff._tariff_group._id].has_counter) $scope.apts[key].charges[tariff._tariff_group._id].volume = (norm * calc_var).toFixed(4);
+                  if(!apt.charges[tariff._tariff_group._id].has_counter && ($scope.apts[key].charges[tariff._tariff_group._id].volume > max_value || max_value == null))
+                  {
+                    max_value = $scope.apts[key].charges[tariff._tariff_group._id].volume;
+                    max_key   = key;
+                  }
+                  real_sum += Number($scope.apts[key].charges[tariff._tariff_group._id].volume);
+                  $scope.apts[key].charges[tariff._tariff_group._id].value = ($scope.apts[key].charges[tariff._tariff_group._id].volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
+                });
+                if (real_sum != $scope.tabs[tariff._tariff_group._id].volume) {
+                  // console.log($scope.tabs[tariff._tariff_group._id].volume);
+                  // console.log(real_sum);
+                  // console.log(max_key);
+                  // console.log('Repaired float error ' + ($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4) + ' for ' + $scope.apts[max_key].number);
+                  $scope.apts[max_key].charges[tariff._tariff_group._id].volume = (Number($scope.apts[max_key].charges[tariff._tariff_group._id].volume) + Number(($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4))).toFixed(4);
+                };
+              }
+              else
+              {
+                angular.forEach($scope.apts, function(apt, key){
+                  var calc_var = 0;
+                  if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
+                  if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
+                  if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
+                  $scope.apts[key].charges[tariff._tariff_group._id].norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : $scope.tabs[tariff._tariff_group._id].norm;
+                  if(!apt.charges[tariff._tariff_group._id].has_counter)$scope.apts[key].charges[tariff._tariff_group._id].volume = ($scope.tabs[tariff._tariff_group._id].norm * calc_var).toFixed(4);
+                  $scope.apts[key].charges[tariff._tariff_group._id].value = ($scope.apts[key].charges[tariff._tariff_group._id].volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
+                });
+              }
             }
           };
+          // updateCharges();
           $scope.$watch("tabs['" + tariff._tariff_group._id + "'].by_volume", function( newValue ) {
             // console.log( "$watch : " + newValue );
             updateCharges();
@@ -467,5 +486,27 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
   $scope.save = function(tariff_group_id) {
     console.log('Saving tariff_group');
     console.log(tariff_group_id);
+    var charges = [];
+    angular.forEach($scope.apts, function(apt, key){
+      charges.push({
+        _id:                 apt.charges[tariff_group_id]._id,
+        has_counter:         apt.charges[tariff_group_id].has_counter,
+        norm:                apt.charges[tariff_group_id].norm,
+        volume:              apt.charges[tariff_group_id].volume,
+        value:               apt.charges[tariff_group_id].value,
+        reappraisal_auto:    apt.charges[tariff_group_id].reappraisal_auto,
+        reappraisal_manual:  apt.charges[tariff_group_id].reappraisal_manual
+      });
+    });
+    console.log(charges);
+    $http({method: 'POST', url: 'http://localhost:1337/api/save_charges_for_building', data: {charges: charges}}).
+    success(function(data, status) {
+      $scope.data = data || "Request failed";
+      $scope.status = status;
+    }).
+    error(function(data, status) {
+      $scope.data = data || "Request failed";
+      $scope.status = status;
+    });
   };
 }]);
