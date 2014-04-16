@@ -307,7 +307,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
     angular.forEach(data.tariffs, function(tariff, key){
       tariff_group_ids.push(tariff._tariff_group._id);
     });
-    console.log(data);
+    // console.log(data);
     var apartments = Apartment.query({building_id: $routeParams.building_id, period: $rootScope.current_period.date}, function(apartments)
     {
       $scope.apts         = {};
@@ -327,15 +327,15 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
         $scope.space        += apt.space;
         $scope.common_space += apt.common_space;
       });
-      console.log('apts');
-      console.log($scope.apts);
+      // console.log('apts');
+      // console.log($scope.apts);
       $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_building/' + $routeParams.building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
       success(function(charges, status) {
         // console.log('STARTED');
         var total_volume = {};
         charges.forEach(function(charge) {
-          console.log(charge);
-          console.log($scope.apts);
+          // console.log(charge);
+          // console.log($scope.apts);
           $scope.apts[charge._apartment].charges[charge._tariff_group] = {
             has_counter:         charge.has_counter,
             norm:                charge.norm,
@@ -349,8 +349,8 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
           else
             total_volume[charge._tariff_group] = Number(charge.volume);
         })
-        console.log('total_volume');
-        console.log(total_volume);
+        // console.log('total_volume');
+        // console.log(total_volume);
         // console.log($scope.apts);
         // console.log('FINISHED');
         $scope.tabs = {};
@@ -365,16 +365,18 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
             tariff_group_id: tariff._tariff_group._id,
             tariff: tariff,
             by_volume: true,
-            volume: 0,
+            volume: total_volume[tariff._tariff_group._id],
             norm: 0,
             calc_var: calc_var
           };
+          // console.log('tab');
+          // console.log($scope.tabs[tariff._tariff_group._id]);
           // Wathing common trigger
           var updateCharges = function() {
             if($scope.tabs[tariff._tariff_group._id].by_volume == 1) {
-              console.log('Update charges for volume');
-              var max_value = 0;
-              var max_key   = 0;
+              // console.log('Update charges for volume');
+              var max_value = null;
+              var max_key   = null;
               var real_sum  = 0;
               var to_share  = $scope.tabs[tariff._tariff_group._id].volume;
               var calc_var  = $scope.tabs[tariff._tariff_group._id].calc_var;
@@ -395,7 +397,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
                 if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
                 $scope.apts[key].charges[tariff._tariff_group._id].norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : norm;
                 if(!apt.charges[tariff._tariff_group._id].has_counter) $scope.apts[key].charges[tariff._tariff_group._id].volume = (norm * calc_var).toFixed(4);
-                if(!apt.charges[tariff._tariff_group._id].has_counter && $scope.apts[key].charges[tariff._tariff_group._id].volume > max_value)
+                if(!apt.charges[tariff._tariff_group._id].has_counter && ($scope.apts[key].charges[tariff._tariff_group._id].volume > max_value || max_value == null))
                 {
                   max_value = $scope.apts[key].charges[tariff._tariff_group._id].volume;
                   max_key   = key;
@@ -404,10 +406,10 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
                 $scope.apts[key].charges[tariff._tariff_group._id].value = ($scope.apts[key].charges[tariff._tariff_group._id].volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
               });
               if (real_sum != $scope.tabs[tariff._tariff_group._id].volume) {
-                console.log($scope.tabs[tariff._tariff_group._id].volume);
-                console.log(real_sum);
-                console.log(max_key);
-                console.log('Repaired float error ' + ($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4) + ' for ' + $scope.apts[max_key].number);
+                // console.log($scope.tabs[tariff._tariff_group._id].volume);
+                // console.log(real_sum);
+                // console.log(max_key);
+                // console.log('Repaired float error ' + ($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4) + ' for ' + $scope.apts[max_key].number);
                 $scope.apts[max_key].charges[tariff._tariff_group._id].volume = (Number($scope.apts[max_key].charges[tariff._tariff_group._id].volume) + Number(($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4))).toFixed(4);
               };
             }

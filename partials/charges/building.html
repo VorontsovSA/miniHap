@@ -11,15 +11,15 @@
         <th>Тариф</th>
         <td>{{tab.tariff.rate}}</td>
       </tr>
-      <tr>
+      <tr ng-show="tab.tariff_group.use_residents">
         <th>Проживает</th>
         <td>{{residents}}</td>
       </tr>
-      <tr>
+      <tr ng-show="tab.tariff_group.use_space">
         <th>Площадь</th>
         <td>{{space}}</td>
       </tr>
-      <tr>
+      <tr ng-show="tab.tariff_group.use_common_space">
         <th>Площадь МОП</th>
         <td>{{common_space}}</td>
       </tr>

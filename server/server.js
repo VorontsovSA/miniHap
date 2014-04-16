@@ -100,19 +100,28 @@ app.get('/api/charges_for_building/:id/:tariff_groups/:period', function(req, re
           var tariff_group_id = tg_ids.pop();
           // console.log({1: apartments_ids, 2: tariff_group_id, 3: req.params.period});
           ChargeModel.find({ _apartment: { $in: apartments_ids }, _tariff_group: tariff_group_id, 'period' : req.params.period }, function(err, charges) {
-            // console.log(apartments_ids);
-            // console.log('charges for ' + tariff_group_id + ': ' + charges.length);
-            if(charges)
-            {
-              // console.log('apt_ids before' + apt_ids);
-              charges.forEach( function(charge) {
-                var index = apt_ids.indexOf(charge._id);
-                apt_ids.splice(index, 1);
-              });
-              // console.log('apt_ids after' + apt_ids);
+            if (!err) {
+              // console.log(apartments_ids);
+              // console.log(charges);
+              // console.log('charges for ' + tariff_group_id + ': ' + charges.length);
+              if(charges)
+              {
+                // console.log('apt_ids before ' + apt_ids);
+                charges.forEach( function(charge) {
+                  // console.log(charge._apartment.toHexString());
+                  var index = apt_ids.indexOf(charge._apartment.toHexString());
+                  // console.log('index = ' + index);
+                  if(index != -1) apt_ids.splice(index, 1);
+                });
+                // console.log('apt_ids after ' + apt_ids);
+              }
+              // console.log('tariff_group_id = ' + tariff_group_id);
+              processCreateingCharges(tg_ids, apt_ids, tariff_group_id);
             }
-            // console.log('tariff_group_id = ' + tariff_group_id);
-            processCreateingCharges(tg_ids, apt_ids, tariff_group_id);
+            else
+            {
+              console.log(err);
+            }
           });
         };
         function processCreateingCharges(tg_ids, apt_ids, tariff_group_id)
