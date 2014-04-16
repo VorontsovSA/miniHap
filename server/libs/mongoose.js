@@ -61,9 +61,9 @@ var Apartment = new Schema({
   space:               { type: Number, default: 0 },
   common_space:        { type: Number, default: 0 },
   residents:           { type: Number, default: 1 },
-  new_space:           { type: Number, default: 0 },
-  new_common_space:    { type: Number, default: 0 },
-  new_residents:       { type: Number, default: 1 },
+  new_space:           { type: Number, default: null },
+  new_common_space:    { type: Number, default: null },
+  new_residents:       { type: Number, default: null },
   _building:           { type: Schema.Types.ObjectId, ref: 'Building' },
   period:              Date
 });

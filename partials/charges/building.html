@@ -52,7 +52,7 @@
           <th>Перерасчет ручной</th>
         </tr>
       </thead>
-      <tr ng-repeat="(aid, apt) in apts">
+      <tr ng-repeat="apt in apts | object2Array | orderBy: 'number'">
         <td>{{apt.number}}</td>
         <td>{{apt.contractor}}</td>
         <td><input ng-model="apt.charges[tab.tariff_group_id].has_counter" type="checkbox"></td>
@@ -67,6 +67,7 @@
       </tr>
     </table>
     <button class="btn btn-primary" ng-click="save(tab.tariff_group_id)">Сохранить</button>
+    <a class="btn btn-warning" ng-click="clearReappraisal()" href="">Удалить перерасчеты</a>
     <a class="btn btn-default" href="#/charges">Вернуться к списку</a>
   </tab>
 </tabset>

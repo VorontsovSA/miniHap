@@ -161,6 +161,28 @@ app.get('/api/charges_for_building/:id/:tariff_groups/:period', function(req, re
   // 8.  Отправить измененную группу тарифов на сохранение
   // 9.  Получить в бэкенде структуру. Разобрать и сохранить
 });
+// Charges for reappraisal
+app.get('/api/charges_for_reappraisal/:id/:tariff_groups/:period', function(req, res) {
+  var tariff_groups_ids = req.params.tariff_groups.split(',');
+  ApartmentModel.find({'_building' : req.params.id, 'period' : req.params.period}).select('_id').sort('number').exec(function (err, apartments) {
+    if (!err) {
+      var apartments_ids = [];
+      apartments.forEach(function(apartment, key){
+        apartments_ids.push(apartment._id.toString());
+      });
+      ChargeModel.find({ _apartment: { $in: apartments_ids }, _tariff_group: { $in: tariff_groups_ids }, 'period' : req.params.period }, function(err, charges) {
+        if(!err)
+        {
+          return res.send(charges);
+        } else {
+          console.log({ error: 'Internal error(%d): %s' + res.statusCode + err.message });
+        }
+      });
+    } else {
+          console.log({ error: 'Internal error(%d): %s' + res.statusCode + err.message });
+    }
+  });
+});
 // Saving charges
 app.post('/api/save_charges_for_building', function(req, res) {
   var charges = req.body.charges;
@@ -206,6 +228,53 @@ app.post('/api/save_charges_for_building', function(req, res) {
   }
   saveCharge(charges);
 });
+// Saving charges
+app.post('/api/save_reappraisal_for_building', function(req, res) {
+  var charges = req.body.charges;
+  console.log(charges);
+  function saveCharge(charges) {
+    var charge = charges.pop();
+    ApartmentModel.findOne({ _building : charge.building_id,  number : charge.number, period : charge.period }, function (err, apartment) {
+      if(!apartment) {
+          res.statusCode = 404;
+          return res.send({ error: 'Apartment not found' });
+      }
+
+      ChargeModel.findOne( { _apartment : apartment._id.toHexString(), _tariff_group : charge.tariff_group_id, period : charge.period }, function (err, gotcharge) {
+        if(!gotcharge) {
+            res.statusCode = 404;
+            console.log({ _apartment : apartment._id.toHexString(), _tariff_group : charge.tariff_group_id, period : charge.period });
+            return res.send({ error: 'Charge not found' });
+        }
+        gotcharge.reappraisal_auto = charge.reappraisal_auto;
+
+        return gotcharge.save(function (err) {
+          if (!err) {
+            log.info("charge updated");
+            console.log('Charge updated');
+            if(charges.length) {
+              saveCharge(charges);
+            }
+            else
+            {
+              res.send('OK');
+            }
+          } else {
+            if(err.name == 'ValidationError') {
+                res.statusCode = 400;
+                res.send({ error: 'Validation error' });
+            } else {
+                res.statusCode = 500;
+                res.send({ error: 'Server error' });
+            }
+            log.error('Internal error(%d): %s',res.statusCode,err.message);
+          }
+        });
+      });
+    });
+  }
+  saveCharge(charges);
+});
 // Clear Period
 app.get('/api/clear_period/:period', function(req, res) {
   console.log('/api/clear_period/:period');
@@ -231,16 +300,16 @@ app.get('/api/clear_period/:period', function(req, res) {
 // New period
 app.get('/api/new_period/:from/:to', function(req, res) {
   console.log('/api/new_period/:from/:to');
-  console.log(req.params.from);
-  console.log(req.params.to);
+  // console.log(req.params.from);
+  // console.log(req.params.to);
   function cloneApartment(apts)
   {
     console.log('cloneApartment');
     var apt = apts.pop();
-    console.log(apt.contractor);
-    console.log(apt.contractor.first_name);
-    console.log(apt.contractor.second_name);
-    console.log(apt.contractor.last_name);
+    // console.log(apt.contractor);
+    // console.log(apt.contractor.first_name);
+    // console.log(apt.contractor.second_name);
+    // console.log(apt.contractor.last_name);
     var fn = apt.contractor.first_name.toString();
     // Saving new apt
     var apartment = new ApartmentModel({
@@ -328,6 +397,46 @@ app.get('/api/new_period/:from/:to', function(req, res) {
       return res.send({ error: 'Internal error(%d): %s' + res.statusCode + err.message });
     }
   });
+});
+// Clear reappraisal
+app.post('/api/clear_reappraisal', function(req, res) {
+  var charges = req.body.charges;
+  console.log(charges);
+  function saveCharge(charges) {
+    var charge = charges.pop();
+    ChargeModel.findById(charge._id, function (err, gotcharge) {
+      if(!gotcharge) {
+          res.statusCode = 404;
+          return res.send({ error: 'Not found' });
+      }
+
+      gotcharge.reappraisal_auto = 0;
+
+      return gotcharge.save(function (err) {
+          if (!err) {
+              log.info("charge updated");
+              console.log('Charge updated');
+              if(charges.length) {
+                saveCharge(charges);
+              }
+              else
+              {
+                res.send('OK');
+              }
+          } else {
+              if(err.name == 'ValidationError') {
+                  res.statusCode = 400;
+                  res.send({ error: 'Validation error' });
+              } else {
+                  res.statusCode = 500;
+                  res.send({ error: 'Server error' });
+              }
+              log.error('Internal error(%d): %s',res.statusCode,err.message);
+          }
+      });
+    });
+  }
+  saveCharge(charges);
 });
 //#################################
 //#######    Buildings   ##########
@@ -442,18 +551,18 @@ app.delete('/api/building/:id', function (req, res){
 //#################################
 
 app.get('/api/apartment', function(req, res) {
-    console.log(req);
-    console.log(req.params.building_id);
-    return ApartmentModel.find({'_building' : req.query.building_id, 'period' : req.query.period}).sort('number').exec(function (err, apartments) {
-        if (!err) {
-          console.log("DDDD")
-            return res.send(apartments);
-        } else {
-            res.statusCode = 500;
-            log.error('Internal error(%d): %s',res.statusCode,err.message);
-            return res.send({ error: 'Internal error(%d): %s' + res.statusCode + err.message });
-        }
-    });
+  // console.log(req);
+  // console.log(req.params.building_id);
+  return ApartmentModel.find({'_building' : req.query.building_id, 'period' : req.query.period}).sort('number').exec(function (err, apartments) {
+    if (!err) {
+      console.log("DDDD")
+      return res.send(apartments);
+    } else {
+      res.statusCode = 500;
+      log.error('Internal error(%d): %s',res.statusCode,err.message);
+      return res.send({ error: 'Internal error(%d): %s' + res.statusCode + err.message });
+    }
+  });
 });
 
 app.post('/api/apartment', function(req, res) {
@@ -514,6 +623,9 @@ app.put('/api/apartment/:id', function (req, res){
         apartment.space            = req.body.space;
         apartment.common_space     = req.body.common_space;
         apartment.residents        = req.body.residents;
+        apartment.new_space        = req.body.new_space;
+        apartment.new_common_space = req.body.new_common_space;
+        apartment.new_residents    = req.body.new_residents;
         apartment._building        = req.body._building;
         apartment.period           = req.body.period;
 
@@ -786,6 +898,18 @@ app.delete('/api/tariff/:id', function (req, res){
 //#################################
 //#######     Periods    ##########
 //#################################
+
+app.get('/api/period/many', function(req, res) {
+  return PeriodModel.find({ 'finished' : true }).sort('date').exec(function (err, periods) {
+    if (!err) {
+      return res.send(periods);
+    } else {
+      res.statusCode = 500;
+      log.error('Internal error(%d): %s',res.statusCode,err.message);
+      return res.send({ error: 'Server error' });
+    }
+  });
+});
 
 app.get('/api/period/date', function(req, res) {
     return PeriodModel.findOne({ date: req.query.date }).exec(function (err, period) {

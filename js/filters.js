@@ -17,4 +17,13 @@ angular.module('hap.filters', []).
       console.log('date2 = ' + result_date);
       return (result_date == 'Invalid Date') ? ' ' : months[result_date.getMonth()] + ' ' + result_date.getFullYear();
     };
+  }]).
+  filter('object2Array', [function() {
+    return function(input) {
+      var out = [];
+      for(var i in input){
+        out.push(input[i]);
+      }
+      return out;
+    };
   }]);

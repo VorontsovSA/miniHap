@@ -1,0 +1,30 @@
+<h3 class="page-header">Расчёт перерасчета по ул.{{building.street}} дом.{{building.number}} за {{date | amDateFormat:'MMMM YYYY'}}</h3>
+
+<tabset>
+  <tab ng-repeat="tab in tabs" active="tab.active" disabled="tab.disabled">
+    <tab-heading>
+      {{tab.title}}
+    </tab-heading>
+    <br>
+    <table class="table table-condensed">
+      <thead>
+        <tr>
+          <th>Номер</th>
+          <th>ФИО</th>
+          <th>Начисление</th>
+          <th>Новое начисление</th>
+          <th>Сумма к перерасчету</th>
+        </tr>
+      </thead>
+      <tr ng-repeat="(aid, apt) in apts">
+        <td>{{apt.number}}</td>
+        <td>{{apt.contractor}}</td>
+        <td>{{apt.charges[tab.tariff_group_id].value}}</td>
+        <td>{{apt.charges[tab.tariff_group_id].new_value}}</td>
+        <td>{{apt.charges[tab.tariff_group_id].reappraisal_auto}}</td>
+      </tr>
+    </table>
+    <button class="btn btn-primary" ng-click="save()">Сохранить</button>
+    <a class="btn btn-default" href="#/reappraisals">Вернуться к списку</a>
+  </tab>
+</tabset>

@@ -1,6 +1,7 @@
 <h3 class="page-header">Список квартир по ул.{{building.street}} дом.{{building.number}}</h3>
 
 <a href="#/apartments/new/{{building._id}}" class="btn btn-primary">Создать</a>
+<a class="btn btn-default" href="#/buildings">Вернуться к списку</a>
 
 <table class="table table-hover">
   <thead>
@@ -17,12 +18,12 @@
     <tr ng-repeat="apartment in apartments">
       <td>{{apartment.number}}</td>
       <td>{{apartment.contractor.last_name}} {{apartment.contractor.first_name}} {{apartment.contractor.second_name}}</td>
-      <td>{{apartment.space}}</td>
-      <td>{{apartment.common_space}}</td>
-      <td>{{apartment.residents}}</td>
+      <td>{{apartment.space}}<span ng-show="apartment.new_space != null"> ({{apartment.new_space}})</span></td>
+      <td>{{apartment.common_space}}<span ng-show="apartment.new_common_space != null"> ({{apartment.new_common_space}})</span></td>
+      <td>{{apartment.residents}}<span ng-show="apartment.new_residents != null"> ({{apartment.new_residents}})</span></td>
       <td>
-        <a class="btn" href="#/apartments/editchanges/{{apartment._id}}"><span class="glyphicon glyphicon-time"></span></a>
-        <a class="btn" href="#/apartments/edit/{{apartment._id}}"><span class="glyphicon glyphicon-pencil"></span></a>
+        <a class="btn" href="#/apartments/editchanges/{{apartment._id}}" tooltip-placement="top" tooltip="Изменить параметры для перерасчета"><span class="glyphicon glyphicon-time icon-lg"></span></a>
+        <a class="btn" href="#/apartments/edit/{{apartment._id}}" tooltip-placement="top" tooltip="Редактировать"><span class="glyphicon glyphicon-pencil icon-lg"></span></a>
       </td>
     </tr>
   </tbody>

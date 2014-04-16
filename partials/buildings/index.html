@@ -14,7 +14,11 @@
     <tr ng-repeat="building in buildings">
       <td><a href="#/apartments/{{building._id}}">Ул.{{building.street}} дом.{{building.number}}</a></td>
       <td>{{building.description}}</td>
-      <td><a class="pull-right" href="#/buildings/edit/{{building._id}}"><span class="glyphicon glyphicon-pencil"></span></a></td>
+      <td>
+        <a class="pull-right" href="#/buildings/edit/{{building._id}}" tooltip-placement="top" tooltip="Редактировать"><span class="glyphicon glyphicon-pencil icon-lg"></span></a>
+        <a class="pull-right" href="#/balance_report/{{building._id}}" tooltip-placement="top" tooltip="Сальдо отчет"><span class="glyphicon glyphicon-barcode icon-lg"></span></a>
+        <a class="pull-right" href="#/quittances/{{building._id}}" tooltip-placement="top" tooltip="Квитанции"><span class="glyphicon glyphicon-list-alt icon-lg"></span></a>
+      </td>
     </tr>
   </tbody>
 </table>

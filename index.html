@@ -33,7 +33,14 @@
               <li ng-class="{active: $location.path() == '/tariffGroups'}"><a tabindex="-1" href="#/tariffGroups">Группы тарифов</a></li>
             </ul>
           </li>
-          <li ng-class="{active: $location.path() == '/charges'}"><a href="#/charges">Начисления</a></li>
+          <li ng-class="{active: $location.path() == '/charges' || $location.path() == '/reappraisals' || $location.path() == '/debts'}" class="dropdown">
+            <a href="" id="drop2" role="button" class="dropdown-toggle" data-toggle="dropdown">Расчёты<b class="caret"></b></a>
+            <ul class="dropdown-menu" role="menu" aria-labelledby="drop2">
+              <li ng-class="{active: $location.path() == '/charges'}"><a tabindex="-1" href="#/charges">Начисления</a></li>
+              <li ng-class="{active: $location.path() == '/reappraisals'}"><a tabindex="-1" href="#/reappraisals">Перерасчеты</a></li>
+              <li ng-class="{active: $location.path() == '/debts'}"><a tabindex="-1" href="#/debts">Остатки</a></li>
+            </ul>
+          </li>
         </ul>
         <ul class="nav navbar-nav navbar-right">
           <li><a ng-show="is_last_month && !is_first_month" href="" ng-click="clearMonth()"><span class="glyphicon glyphicon-step-backward"></span></a></li>

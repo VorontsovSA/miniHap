@@ -45,6 +45,7 @@ angular.module('hap.services', ['ngResource']).
     return $resource('http://localhost:1337/api/period/:query_type/:id', {id: '@_id'}, {
       getCurrent: {method:'GET', params:{query_type:'current'}, isArray:false},
       getByDate:  {method:'GET', params:{query_type:'date'}, isArray:false},
+      query:      {method:'GET', params:{query_type:'many'}, isArray:true},
       get:        {method:'GET', params:{query_type:'one'}, isArray:false},
       save:       {method:'POST', params:{query_type:'one'}, isArray:false},
       update:     {method:'PUT', params:{query_type:'one'}, isArray:false},

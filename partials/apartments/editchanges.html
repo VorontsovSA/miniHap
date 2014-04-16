@@ -1,0 +1,24 @@
+<h3 class="page-header">Редактирование изменений параметров квартиры по ул.{{building.street}} дом.{{building.number}}</h3>
+
+<form name="form" class="form-horizontal" role="form">
+  <div class="form-group">
+    <label class="col-sm-2 control-label" >Новая площадь</label>
+    <div class="col-sm-10">
+      <input type="number" class="form-control" ng-model="apartment.new_space" placeholder="Было {{apartment.space}}" smartFloat>
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="col-sm-2 control-label" >Новая площадь МОП</label>
+    <div class="col-sm-10">
+      <input type="number" class="form-control" ng-model="apartment.new_common_space" placeholder="Было {{apartment.common_space}}" smartFloat>
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="col-sm-2 control-label" >Новое количество проживающих</label>
+    <div class="col-sm-10">
+      <input type="number" class="form-control" ng-model="apartment.new_residents" placeholder="Было {{apartment.residents}}" integer>
+    </div>
+  </div>
+  <button ng-disabled="form.$invalid" type="submit" class="col-sm-offset-2 btn btn-primary" ng-click="save(apartment)">Сохранить</button>
+  <a class="btn btn-default" href="#/apartments/{{building._id}}">Вернуться к списку</a>
+</form>
