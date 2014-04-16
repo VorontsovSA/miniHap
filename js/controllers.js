@@ -332,6 +332,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
       $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_building/' + $routeParams.building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
       success(function(charges, status) {
         // console.log('STARTED');
+        var total_volume = {};
         charges.forEach(function(charge) {
           console.log(charge);
           console.log($scope.apts);
@@ -343,7 +344,13 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
             reappraisal_auto:    charge.reappraisal_auto,
             reappraisal_manual:  charge.reappraisal_manual
           };
+          if(total_volume[charge._tariff_group])
+            total_volume[charge._tariff_group] += Number(charge.volume);
+          else
+            total_volume[charge._tariff_group] = Number(charge.volume);
         })
+        console.log('total_volume');
+        console.log(total_volume);
         // console.log($scope.apts);
         // console.log('FINISHED');
         $scope.tabs = {};
@@ -455,4 +462,8 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
     $scope.data = data || "Request failed";
     $scope.status = status;
   });
+  $scope.save = function(tariff_group_id) {
+    console.log('Saving tariff_group');
+    console.log(tariff_group_id);
+  };
 }]);

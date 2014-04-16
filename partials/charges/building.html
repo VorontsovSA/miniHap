@@ -32,7 +32,7 @@
       </tr>
       <tr>
         <th>Общедомовые показания</th>
-        <td><input type="number" class="form-control" ng-model="tab.volume" ng-show="tab.by_volume == 1"></td>
+        <td ng-class="(tab.by_volume == 1 ? 'nopad' : '')"><input type="number" class="form-control" ng-model="tab.volume" ng-show="tab.by_volume == 1"></td>
       </tr>
       <tr>
         <th>Норматив</th>
@@ -66,5 +66,7 @@
         <td><input type="number" class="form-control" ng-model="apt.charges[tab.tariff_group_id].reappraisal_manual"></td>
       </tr>
     </table>
+    <button class="btn btn-primary" ng-click="save(tab.tariff_group_id)">Сохранить</button>
+    <a class="btn btn-default" href="#/charges">Вернуться к списку</a>
   </tab>
 </tabset>

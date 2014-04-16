@@ -31,7 +31,7 @@
 
 /* Fix for Bootstrap 3 with Angular UI Bootstrap */
 
-.modal { 
+.modal {
   display: block;
 }
 
@@ -48,3 +48,5 @@
 /* Ease Display */
 
 .pad { padding: 25px; }
+
+.nopad { padding: 0px; }
