@@ -57,21 +57,6 @@ app.get('/api/tariff_groups_for_building/:id', function(req, res) {
                     return res.send(building);
                 });
             });
-
-            // BuildingModel.populate(building, [{ path: 'tariffs', options: { sort: 'number' }, model: TariffModel }], function(err, building) {
-            //     TariffGroupModel.populate(building, [{ path: 'tariffs._tariff_group' }], function(err, building) {
-            //         return res.send(building);
-            //     });
-            // });
-
-            // var opts = [
-            //     { path: 'tariffs', options: { sort: 'number' }, model: TariffModel },
-            //     { path: 'tariffs._tariff_group', model: TariffGroupModel }];
-            // BuildingModel.populate(building, opts, function(err, buildings) {
-            //     console.log(buildings);
-            //     return res.send(buildings);
-            // });
-            //return res.send(building);
         } else {
             res.statusCode = 500;
             log.error('Internal error(%d): %s',res.statusCode,err.message);
@@ -220,6 +205,129 @@ app.post('/api/save_charges_for_building', function(req, res) {
     });
   }
   saveCharge(charges);
+});
+// Clear Period
+app.get('/api/clear_period/:period', function(req, res) {
+  console.log('/api/clear_period/:period');
+  console.log(req.params.period);
+  return ChargeModel.remove({ 'period' : req.params.period }, function(err) {
+    if (!err) {
+      ApartmentModel.remove({ 'period' : req.params.period }, function(err) {
+        if (!err) {
+          return res.send({ status: 'OK' });
+        } else {
+          res.statusCode = 500;
+          log.error('Internal error(%d): %s',res.statusCode,err.message);
+          return res.send({ error: 'Server error' });
+        }
+      });
+    } else {
+      res.statusCode = 500;
+      log.error('Internal error(%d): %s',res.statusCode,err.message);
+      return res.send({ error: 'Server error' });
+    }
+  });
+});
+// New period
+app.get('/api/new_period/:from/:to', function(req, res) {
+  console.log('/api/new_period/:from/:to');
+  console.log(req.params.from);
+  console.log(req.params.to);
+  function cloneApartment(apts)
+  {
+    console.log('cloneApartment');
+    var apt = apts.pop();
+    console.log(apt.contractor);
+    console.log(apt.contractor.first_name);
+    console.log(apt.contractor.second_name);
+    console.log(apt.contractor.last_name);
+    var fn = apt.contractor.first_name.toString();
+    // Saving new apt
+    var apartment = new ApartmentModel({
+        number           : apt.number,
+        // contractor       : apt.contractor,
+        contractor       : {
+          first_name  : unescape(escape(apt.contractor.first_name)),
+          second_name : unescape(escape(apt.contractor.second_name)),
+          last_name   : unescape(escape(apt.contractor.last_name))
+        },
+        space            : apt.space,
+        common_space     : apt.common_space,
+        residents        : apt.residents,
+        _building        : apt._building,
+        period           : req.params.to,
+    });
+
+    apartment.save(function (err) {
+      if (!err) {
+        log.info("apartment created");
+        // Cloning charges
+        ChargeModel.find({ '_apartment' : apt._id, 'period' : req.params.from }, function (err, charges) {
+          if (!err) {
+            cloneCharges(charges, apts, apartment._id);
+          } else {
+            res.statusCode = 500;
+            log.error('Internal error(%d): %s',res.statusCode,err.message);
+            return res.send({ error: 'Internal error(%d): %s' + res.statusCode + err.message });
+          }
+        });
+      } else {
+        console.log(err);
+        if(err.name == 'ValidationError') {
+            res.statusCode = 400;
+            res.send({ error: 'Validation error' });
+        } else {
+            res.statusCode = 500;
+            res.send({ error: 'Server error' });
+        }
+        log.error('Internal error(%d): %s',res.statusCode,err.message);
+      }
+    });
+  }
+  function cloneCharges(charges, apts, aid) {
+    console.log('cloneCharges ' + charges.length + ' ' + apts.length + ' ' + aid);
+    var charge = charges.pop();
+    // Saving new charge
+    var new_charge = new ChargeModel({
+          has_counter:         charge.has_counter,
+          norm:                null,
+          volume:              0,
+          value:               null,
+          reappraisal_auto:    0,
+          reappraisal_manual:  0,
+          _apartment:          aid,
+          _tariff_group:       charge._tariff_group,
+          period:              req.params.to
+    });
+
+    new_charge.save(function (err) {
+      if (!err) {
+        if (charges.length) return cloneCharges(charges, apts, aid);
+        if (apts.length) return cloneApartment(apts);
+        res.send({ 'status' : 'OK' });
+      } else {
+        console.log(err);
+        if(err.name == 'ValidationError') {
+            res.statusCode = 400;
+            res.send({ error: 'Validation error' });
+        } else {
+            res.statusCode = 500;
+            res.send({ error: 'Server error' });
+        }
+        log.error('Internal error(%d): %s',res.statusCode,err.message);
+      }
+    });
+  }
+  ApartmentModel.find({'period' : req.params.from }).sort('number').exec(function (err, apartments) {
+    if (!err) {
+      console.log("DDDD")
+      cloneApartment(apartments);
+    } else {
+      res.statusCode = 500;
+      log.error('Internal error(%d): %s',res.statusCode,err.message);
+      return res.send({ error: 'Internal error(%d): %s' + res.statusCode + err.message });
+    }
+  });
 });
 //#################################
 //#######    Buildings   ##########

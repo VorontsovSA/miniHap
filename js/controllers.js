@@ -44,22 +44,22 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Peri
   $scope.clearMonth = function() {
     var dlg = $dialogs.confirm('Внимание','Действительно хотите очистить всю информацию за данный период и перейти к предыдущему периоду?');
     dlg.result.then(function(btn){
-      // Создать новый период
-      $rootScope.period_next = false;
-      $rootScope.is_last_month = true;
-      $rootScope.current_period.$delete();
-      $rootScope.current_period = $rootScope.period_before;
-      $rootScope.current_period.finished = false;
-      $rootScope.current_period.$update();
-      // Проверить наличие следующего периода
-      $rootScope.period_before = Period.getByDate({ 'date': moment($rootScope.current_period.date).add('months', -1).format()}, function (period) {
-        if(!period.date) $rootScope.is_first_month = true;
-      });
-      // // Удалить всю информацию и перейти на прошлый период
-      $http({method: 'GET', url: 'http://localhost:1337/api'}).
+      // Удалить всю информацию и перейти на прошлый период
+      $http({ method: 'GET', url: 'http://localhost:1337/api/clear_period/' + moment($rootScope.current_period.date).format() }).
         success(function(data, status) {
           $scope.status = status;
           $scope.data = data;
+          // Создать новый период
+          $rootScope.period_next = false;
+          $rootScope.is_last_month = true;
+          $rootScope.current_period.$delete();
+          $rootScope.current_period = $rootScope.period_before;
+          $rootScope.current_period.finished = false;
+          $rootScope.current_period.$update();
+          // Проверить наличие следующего периода
+          $rootScope.period_before = Period.getByDate({ 'date': moment($rootScope.current_period.date).add('months', -1).format()}, function (period) {
+            if(!period.date) $rootScope.is_first_month = true;
+          });
           $location.path('/buildings');
         }).
         error(function(data, status) {
@@ -82,7 +82,7 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Peri
       $rootScope.period_next = false;
       $rootScope.is_last_month = true;
       // Удалить всю информацию и перейти на прошлый период
-      $http({method: 'GET', url: 'http://localhost:1337/api'}).
+      $http({method: 'GET', url: 'http://localhost:1337/api/new_period/' + moment($rootScope.current_period.date).add('months', -1).format() + '/' + moment($rootScope.current_period.date).format()}).
         success(function(data, status) {
           $scope.status = status;
           $scope.data = data;
