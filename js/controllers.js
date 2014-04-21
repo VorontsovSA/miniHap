@@ -113,7 +113,7 @@ hapControllers.controller('BuildingsCtrl', ['$scope', 'Building', function($scop
     // doc.text(20, 20, 'Do you like that?');
     // doc.save('q.pdf');
     var fs = require('fs');
-    var margin = 72,
+    var margin = 90,
         font_size = 10,
         font_size_large = 12;
     var PDFDocument = require ('pdfkit');
@@ -126,60 +126,134 @@ hapControllers.controller('BuildingsCtrl', ['$scope', 'Building', function($scop
         }
     });
     doc.pipe(fs.createWriteStream('file.pdf'));
-    doc.font('fonts/times.ttf');
-    doc.fontSize(font_size);
-    doc.text('УФК по Приморскому краю (федеральное государственное казенное учреждение "2 отряд федеральной противопожарной службы по Приморскому краю)');
-    doc.moveDown();
-    doc.text('ИНН 2536047692     КПП 253601001     ОКТМО 05701000');
-    doc.text('р/сч 40101810900000010002 в ГРКЦ ГУ Банка России по Приморскому краю г.Владивосток');
-    doc.text('БИК 040507001');
-    doc.font('fonts/timesbd.ttf');
-    doc.fontSize(font_size_large);
-    doc.text('Код бюджетной классификации КБК: 177 113 0206101 7000 130');
-    doc.font('fonts/times.ttf');
-    doc.fontSize(font_size);
-    doc.moveDown();
-    doc.text('ПЛАТЕЛЬЩИК', 200);
-    doc.text('ФИО:', margin).moveUp().text('Иванов В.М.', 200);
-    doc.text('Адрес:', margin).moveUp().text('ул. Русская, 73-а, ком.24', 200);
-    doc.text('Проживающих:', margin).moveUp().text('3', 200);
-    doc.text('Площадь:', margin).moveUp().text('33', 200).moveUp().text('Январь 2014 год', 450);
+    function q_header(doc) {
+      doc.font('fonts/times.ttf');
+      doc.fontSize(font_size);
+      doc.text('УФК по Приморскому краю (федеральное государственное казенное учреждение "2 отряд федеральной противопожарной службы по Приморскому краю)');
+      doc.moveDown();
+      doc.text('ИНН 2536047692     КПП 253601001     ОКТМО 05701000');
+      doc.text('р/сч 40101810900000010002 в ГРКЦ ГУ Банка России по Приморскому краю г.Владивосток');
+      doc.text('БИК 040507001');
+      doc.font('fonts/timesbd.ttf');
+      doc.fontSize(font_size_large);
+      doc.text('Код бюджетной классификации КБК: 177 113 0206101 7000 130');
+      doc.font('fonts/times.ttf');
+      doc.fontSize(font_size);
+      doc.moveDown();
+      doc.text('ПЛАТЕЛЬЩИК', 200);
+      doc.text('ФИО:', margin).moveUp().text('Иванов В.М.', 200);
+      doc.text('Адрес:', margin).moveUp().text('ул. Русская, 73-а, ком.24', 200);
+      doc.text('Проживающих:', margin).moveUp().text('3', 200);
+      doc.text('Площадь:', margin).moveUp().text('33', 200).moveUp().text('Январь 2014 год', 450);
+      return doc;
+    }
+    doc = q_header(doc);
     doc.moveDown();
     doc.text('ОПЛАЧЕНО: _________________', 150);
+    doc.moveDown();
     var table = [[ 'Ремонт жилья', '1000.00' ],[ 'Содержание жилья', '1000.00' ],[ 'Водоотведение', '1000.00' ]];
-    var heading = [ 'Вид услуги', 'Сумма'];
+    var head = [ 'Вид услуги', 'Сумма'];
+    var footer = [];
     var columns = [ 200, 72 ];
     var head_align = ['center', 'center'];
     var body_align = ['left', 'right'];
+    var footer_align = [];
     var size = [ 2, 3 ];
-    for (var i = 0; i < size[0]; i++) {
-      doc.text(heading[i], 3 + margin + ((i == 0) ? 0 : columns[i-1]), doc.y, {width: columns[i] - 6, align: head_align[i]}).moveUp();
-    };
-    doc.moveDown();
-    for (var i = 0; i < size[1]; i++) {
-      for (var j = 0; j < size[0]; j++) {
-        doc.text(table[i][j], 3 + margin + ((j == 0) ? 0 : columns[j-1]), doc.y, {width: columns[j] - 6, align: body_align[j]}).moveUp();
+    function q_table(table, head, columns, footer, head_align, body_align, footer_align, size, doc) {
+      var shift = 0;
+      var head_height = Number(1);
+      for (var i = 0; i < size[0]; i++) {
+        var y_before = doc.y;
+        doc.text(head[i], 3 + margin + shift, doc.y, {width: columns[i] - 6, align: head_align[i]});
+        var cell_height = ((doc.y - y_before) / doc.currentLineHeight(true)).toFixed();
+        console.log('ch=' + cell_height + ' '+ head[i]);
+        head_height = ((cell_height > head_height) ? cell_height : head_height);
+        console.log('hh=' + head_height);
+        doc.moveUp(cell_height);
+        shift += (columns[i]) ? columns[i] : 0;
+      };
+      doc.moveDown(head_height);
+      for (var i = 0; i < size[1]; i++) {
+        shift = 0;
+        for (var j = 0; j < size[0]; j++) {
+          doc.text(table[i][j], 3 + margin + shift, doc.y, {width: columns[j] - 6, align: body_align[j]}).moveUp();
+          shift += (columns[j]) ? columns[j] : 0;
+        }
+        doc.moveDown();
+      };
+      var shift = 0;
+      if(footer.length){
+        for (var i = 0; i < size[0]; i++) {
+              doc.text(footer[i], 3 + margin + shift, doc.y, {width: columns[i] - 6, align: footer_align[i]});
+              doc.moveUp();
+              shift += (columns[i]) ? columns[i] : 0;
+        }
+        doc.moveDown();
       }
-      doc.moveDown();
-    };
-    doc.moveUp(size[1] + 1);
-    var x = margin;
-    var y = doc.y;
-    var shift = 0;
-    doc.lineWidth(0.5);
-    for (var i = 0; i <= size[0]; i++) {
-      doc.moveTo(x + shift, y + 0)
-         .lineTo(x + shift, y + doc.currentLineHeight(true) * (size[1] + 1) + 0)
-         .stroke();
-      shift += (columns[i]) ? columns[i] : 0;
-    };
-    //var shift = 0;
-    for (var i = 0; i <= size[1] + 1; i++) {
-      console.log('line');
-      doc.moveTo(x, y + doc.currentLineHeight(true) * i + 0)
-         .lineTo(x + shift, y + doc.currentLineHeight(true) * i + 0)
-         .stroke();
-    };
+      doc.moveUp(Number(head_height) + size[1] + ((footer.length) ? 1 : 0));
+      var x = margin;
+      var y = doc.y;
+      var shift = 0;
+      doc.lineWidth(0.5);
+      console.log('hh=' + head_height);
+      for (var i = 0; i <= size[0]; i++) {
+        doc.moveTo(x + shift, y + 0)
+           .lineTo(x + shift, y + doc.currentLineHeight(true) * (size[1] + Number(head_height) + ((footer.length) ? 1 : 0)) + 0)
+           .stroke();
+        shift += (columns[i]) ? columns[i] : 0;
+      };
+      //var shift = 0;
+      console.log('hh=' + head_height);
+      for (var i = 0; i <= size[1] + 1 + ((footer.length) ? 1 : 0); i++) {
+        console.log('line');
+        console.log(y + doc.currentLineHeight(true) * (i + ((i == 0) ? 0 : Number(head_height)-1)) + 0);
+        doc.moveTo(x, y + doc.currentLineHeight(true) * (i + ((i == 0) ? 0 : Number(head_height)-1)) + 0)
+           .lineTo(x + shift, y + doc.currentLineHeight(true) * (i + ((i == 0) ? 0 : Number(head_height)-1)) + 0)
+           .stroke();
+      };
+      doc.x = x;
+      doc.y = y;
+      doc.moveDown(size[1] + Number(head_height) + ((footer.length) ? 1 : 0));
+      return doc;
+    }
+    doc = q_table(table, head, columns, footer, head_align, body_align, footer_align, size, doc);
+    doc.font('fonts/timesbd.ttf');
+    doc.text('Сумма к оплате:', margin).moveUp().text('12000,00', 200).moveUp().text('Общая задолженность:', 350).moveUp().text('72000,12', 500);
+    doc.moveDown();
+    doc.font('fonts/times.ttf');
+    doc.text('Дата платежа __________________  Подпись ____________', margin);
+    doc.moveDown();
+    doc = q_header(doc);
+    doc.text('Сумма к оплате:', margin).moveUp().text('12000,00', 200);
+    doc.moveDown();
+    doc.font('fonts/timesbi.ttf');
+    doc.text('Обслуживание жилого фонда:', margin);
+    doc.font('fonts/times.ttf');
+    var table = [
+                  [ 'Ремонт жилья', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00' ],
+                  [ 'Содержание жилья', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00' ]
+                ];
+    var head = [ 'Вид услуги', 'Норматив', 'Ед. изм. норматива', 'Объем', 'Ед. изм. объема', 'Тариф руб./ед. изм.', 'Пере-расчеты', 'Итого к оплате'];
+    var footer = [ 'Итого', ' ', ' ', ' ', ' ', ' ', ' ', '1300,12'];
+    var columns = [ 100, 60, 60, 50, 50, 50, 50, 50 ];
+    var head_align = ['center', 'center', 'center', 'center', 'center', 'center', 'center', 'center'];
+    var body_align = ['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
+    var footer_align = ['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
+    var size = [ 8, 2 ];
+    doc = q_table(table, head, columns, footer, head_align, body_align, footer_align, size, doc);
+    doc.font('fonts/timesbi.ttf');
+    doc.text('Водоснабжение и водоотведение:', margin);
+    doc.font('fonts/times.ttf');
+    doc.font('fonts/timesbi.ttf');
+    doc.text('Дальэнерго:', margin);
+    doc.font('fonts/times.ttf');
+    doc.moveDown();
+    doc.font('fonts/timesbd.ttf');
+    doc.text('Задолженность за коммунальные услуги:', margin).moveUp().text('12000,00', 450);
+    doc.text('Общая задолженность за коммунальные услуги:', margin).moveUp().text('12000,00', 450);
+    doc.moveDown();
+    doc.font('fonts/times.ttf');
+    doc.text('ОПЛАЧЕНО:__________ Дата платежа: ___________ Подпись: __________', margin);
     doc.end();
     // doc.save();
   }
