@@ -100,162 +100,99 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Peri
 //#######    Buildings   ##########
 //#################################
 
-hapControllers.controller('BuildingsCtrl', ['$scope', 'Building', function($scope, Building) {
+hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', '$http', 'Apartment', 'moment', 
+  function($scope, $rootScope, Building, $http, Apartment, moment) {
   $scope.buildings = Building.query();
 
   $scope.quittances = function (building_id) {
-    // var doc = new jsPDF();
-    // doc.setFont("Times", "Bold");
-    // doc.setFontType("Roman");
-    // doc.text(20, 20, 'Привет Олег!');
-    // doc.text(20, 30, 'This is client-side Javascript, pumping out a PDF.');
-    // doc.addPage();
-    // doc.text(20, 20, 'Do you like that?');
-    // doc.save('q.pdf');
-    var fs = require('fs');
-    var margin = 90,
-        font_size = 10,
-        font_size_large = 12;
-    var PDFDocument = require ('pdfkit');
-    var doc = new PDFDocument({
-        margins: {
-          top: 45,
-          bottom: 45,
-          left: margin,
-          right: 45
-        }
+    $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + building_id}).
+    success(function(building_data, status) {
+      var date = moment($rootScope.current_period.date).format('MMMM YYYY');
+      var data = {
+        street      : building_data.street,
+        number      : building_data.number,
+        description : building_data.description,
+        date        : moment($rootScope.current_period.date).format('YYYY.MM'),
+        apts: {}
+      };
+      var tariff_group_ids = [];
+      var tariff_groups = {};
+      var tariff_group_executor = {};
+      var executors = [];
+      angular.forEach(building_data.tariffs, function(tariff, key){
+        console.log(tariff._tariff_group.executor);
+        if(executors.indexOf(tariff._tariff_group.executor) == -1) executors.push(tariff._tariff_group.executor);
+        tariff_group_executor[tariff._tariff_group._id] = executors.indexOf(tariff._tariff_group.executor);
+        tariff_group_ids.push(tariff._tariff_group._id);
+      });
+      var apartments = Apartment.query({building_id: building_id, period: $rootScope.current_period.date}, function(apartments)
+      {
+        angular.forEach(apartments, function(apt, key){
+          data.apts[apt._id] = {
+            address      : 'ул. ' + building_data.street + ', д. ' + building_data.number + ', к. ' + apt.number,
+            number       : apt.number,
+            contractor   : apt.contractor.last_name + ' ' + apt.contractor.first_name + ' ' + apt.contractor.second_name,
+            residents    : apt.residents,
+            space        : apt.space,
+            common_space : apt.common_space,
+            date         : date,
+            total        : 0,
+            total_debt   : 0,
+            executors: []
+          };
+          angular.forEach(building_data.tariffs, function(tariff, key){
+            data.apts[apt._id].executors[executors.indexOf(tariff._tariff_group.executor)] = {
+              name: tariff._tariff_group.executor,
+              total: 0,
+              tariff_groups: {}
+            }
+          });
+          angular.forEach(building_data.tariffs, function(tariff, key){
+            data.apts[apt._id].executors[executors.indexOf(tariff._tariff_group.executor)].tariff_groups[tariff._tariff_group._id] = {
+              tariff_group: tariff._tariff_group,
+              tariff: tariff,
+              charge: null
+            }
+          });
+        });
+        $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_building/' + building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
+        success(function(charges, status) {
+          angular.forEach(charges, function(charge, key){
+            data.apts[charge._apartment].executors[tariff_group_executor[charge._tariff_group]].tariff_groups[charge._tariff_group].charge = charge;
+            data.apts[charge._apartment].total += charge.value + charge.reappraisal_auto + charge.reappraisal_manual;
+            data.apts[charge._apartment].total_debt += charge.debt;
+            data.apts[charge._apartment].executors[tariff_group_executor[charge._tariff_group]].total += charge.value + charge.reappraisal_auto + charge.reappraisal_manual;
+          })
+          console.log(data);
+          require('./libs/quittances').generate(data);
+        }).
+        error(function(data, status) {
+          console.log("Request failed");
+        });
+      });
+    }).
+    error(function(data, status) {
+      console.log("Request failed");
     });
-    doc.pipe(fs.createWriteStream('file.pdf'));
-    function q_header(doc) {
-      doc.font('fonts/times.ttf');
-      doc.fontSize(font_size);
-      doc.text('УФК по Приморскому краю (федеральное государственное казенное учреждение "2 отряд федеральной противопожарной службы по Приморскому краю)');
-      doc.moveDown();
-      doc.text('ИНН 2536047692     КПП 253601001     ОКТМО 05701000');
-      doc.text('р/сч 40101810900000010002 в ГРКЦ ГУ Банка России по Приморскому краю г.Владивосток');
-      doc.text('БИК 040507001');
-      doc.font('fonts/timesbd.ttf');
-      doc.fontSize(font_size_large);
-      doc.text('Код бюджетной классификации КБК: 177 113 0206101 7000 130');
-      doc.font('fonts/times.ttf');
-      doc.fontSize(font_size);
-      doc.moveDown();
-      doc.text('ПЛАТЕЛЬЩИК', 200);
-      doc.text('ФИО:', margin).moveUp().text('Иванов В.М.', 200);
-      doc.text('Адрес:', margin).moveUp().text('ул. Русская, 73-а, ком.24', 200);
-      doc.text('Проживающих:', margin).moveUp().text('3', 200);
-      doc.text('Площадь:', margin).moveUp().text('33', 200).moveUp().text('Январь 2014 год', 450);
-      return doc;
-    }
-    doc = q_header(doc);
-    doc.moveDown();
-    doc.text('ОПЛАЧЕНО: _________________', 150);
-    doc.moveDown();
-    var table = [[ 'Ремонт жилья', '1000.00' ],[ 'Содержание жилья', '1000.00' ],[ 'Водоотведение', '1000.00' ]];
-    var head = [ 'Вид услуги', 'Сумма'];
-    var footer = [];
-    var columns = [ 200, 72 ];
-    var head_align = ['center', 'center'];
-    var body_align = ['left', 'right'];
-    var footer_align = [];
-    var size = [ 2, 3 ];
-    function q_table(table, head, columns, footer, head_align, body_align, footer_align, size, doc) {
-      var shift = 0;
-      var head_height = Number(1);
-      for (var i = 0; i < size[0]; i++) {
-        var y_before = doc.y;
-        doc.text(head[i], 3 + margin + shift, doc.y, {width: columns[i] - 6, align: head_align[i]});
-        var cell_height = ((doc.y - y_before) / doc.currentLineHeight(true)).toFixed();
-        console.log('ch=' + cell_height + ' '+ head[i]);
-        head_height = ((cell_height > head_height) ? cell_height : head_height);
-        console.log('hh=' + head_height);
-        doc.moveUp(cell_height);
-        shift += (columns[i]) ? columns[i] : 0;
-      };
-      doc.moveDown(head_height);
-      for (var i = 0; i < size[1]; i++) {
-        shift = 0;
-        for (var j = 0; j < size[0]; j++) {
-          doc.text(table[i][j], 3 + margin + shift, doc.y, {width: columns[j] - 6, align: body_align[j]}).moveUp();
-          shift += (columns[j]) ? columns[j] : 0;
-        }
-        doc.moveDown();
-      };
-      var shift = 0;
-      if(footer.length){
-        for (var i = 0; i < size[0]; i++) {
-              doc.text(footer[i], 3 + margin + shift, doc.y, {width: columns[i] - 6, align: footer_align[i]});
-              doc.moveUp();
-              shift += (columns[i]) ? columns[i] : 0;
-        }
-        doc.moveDown();
-      }
-      doc.moveUp(Number(head_height) + size[1] + ((footer.length) ? 1 : 0));
-      var x = margin;
-      var y = doc.y;
-      var shift = 0;
-      doc.lineWidth(0.5);
-      console.log('hh=' + head_height);
-      for (var i = 0; i <= size[0]; i++) {
-        doc.moveTo(x + shift, y + 0)
-           .lineTo(x + shift, y + doc.currentLineHeight(true) * (size[1] + Number(head_height) + ((footer.length) ? 1 : 0)) + 0)
-           .stroke();
-        shift += (columns[i]) ? columns[i] : 0;
-      };
-      //var shift = 0;
-      console.log('hh=' + head_height);
-      for (var i = 0; i <= size[1] + 1 + ((footer.length) ? 1 : 0); i++) {
-        console.log('line');
-        console.log(y + doc.currentLineHeight(true) * (i + ((i == 0) ? 0 : Number(head_height)-1)) + 0);
-        doc.moveTo(x, y + doc.currentLineHeight(true) * (i + ((i == 0) ? 0 : Number(head_height)-1)) + 0)
-           .lineTo(x + shift, y + doc.currentLineHeight(true) * (i + ((i == 0) ? 0 : Number(head_height)-1)) + 0)
-           .stroke();
-      };
-      doc.x = x;
-      doc.y = y;
-      doc.moveDown(size[1] + Number(head_height) + ((footer.length) ? 1 : 0));
-      return doc;
-    }
-    doc = q_table(table, head, columns, footer, head_align, body_align, footer_align, size, doc);
-    doc.font('fonts/timesbd.ttf');
-    doc.text('Сумма к оплате:', margin).moveUp().text('12000,00', 200).moveUp().text('Общая задолженность:', 350).moveUp().text('72000,12', 500);
-    doc.moveDown();
-    doc.font('fonts/times.ttf');
-    doc.text('Дата платежа __________________  Подпись ____________', margin);
-    doc.moveDown();
-    doc = q_header(doc);
-    doc.text('Сумма к оплате:', margin).moveUp().text('12000,00', 200);
-    doc.moveDown();
-    doc.font('fonts/timesbi.ttf');
-    doc.text('Обслуживание жилого фонда:', margin);
-    doc.font('fonts/times.ttf');
-    var table = [
-                  [ 'Ремонт жилья', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00' ],
-                  [ 'Содержание жилья', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00' ]
-                ];
-    var head = [ 'Вид услуги', 'Норматив', 'Ед. изм. норматива', 'Объем', 'Ед. изм. объема', 'Тариф руб./ед. изм.', 'Пере-расчеты', 'Итого к оплате'];
-    var footer = [ 'Итого', ' ', ' ', ' ', ' ', ' ', ' ', '1300,12'];
-    var columns = [ 100, 60, 60, 50, 50, 50, 50, 50 ];
-    var head_align = ['center', 'center', 'center', 'center', 'center', 'center', 'center', 'center'];
-    var body_align = ['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
-    var footer_align = ['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
-    var size = [ 8, 2 ];
-    doc = q_table(table, head, columns, footer, head_align, body_align, footer_align, size, doc);
-    doc.font('fonts/timesbi.ttf');
-    doc.text('Водоснабжение и водоотведение:', margin);
-    doc.font('fonts/times.ttf');
-    doc.font('fonts/timesbi.ttf');
-    doc.text('Дальэнерго:', margin);
-    doc.font('fonts/times.ttf');
-    doc.moveDown();
-    doc.font('fonts/timesbd.ttf');
-    doc.text('Задолженность за коммунальные услуги:', margin).moveUp().text('12000,00', 450);
-    doc.text('Общая задолженность за коммунальные услуги:', margin).moveUp().text('12000,00', 450);
-    doc.moveDown();
-    doc.font('fonts/times.ttf');
-    doc.text('ОПЛАЧЕНО:__________ Дата платежа: ___________ Подпись: __________', margin);
-    doc.end();
-    // doc.save();
+    //##########################################
+    // var datum = [{
+    //   apt: {},
+    //   total: 0,
+    //   total_debt: 0,
+    //   executors: [{
+    //     name: '',
+    //     total: 0,
+    //     tariff_groups: [{
+    //       tariff_group: {},
+    //       tariff: {},
+    //       charges: [{}]
+    //     }]
+    //   }]
+    // }];
+  }
+
+  $scope.saldo = function (building_id) {
+    // var quittances = new Quittances();
   }
 }]);
 
@@ -477,7 +414,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
     angular.forEach(data.tariffs, function(tariff, key){
       tariff_group_ids.push(tariff._tariff_group._id);
     });
-    // console.log(data);
+    console.log(data);
     var apartments = Apartment.query({building_id: $routeParams.building_id, period: $rootScope.current_period.date}, function(apartments)
     {
       $scope.apts         = {};
@@ -504,6 +441,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
       $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_building/' + $routeParams.building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
       success(function(charges, status) {
         // console.log('STARTED');
+        console.log(charges);
         var total_volume = {};
         angular.forEach(charges, function(charge, key){
         // charges.forEach(function(charge) {
@@ -544,8 +482,9 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
             calc_var: calc_var
           };
 
-          // console.log('tab');
-          // console.log($scope.tabs[tariff._tariff_group._id]);
+          console.log('tab');
+          console.log($scope.tabs[tariff._tariff_group._id]);
+          console.log($scope.tabs[tariff._tariff_group._id].tariff.static_norm);
           // Wathing common trigger
           var updateCharges = function() {
             // console.log($scope.apts);

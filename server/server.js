@@ -686,6 +686,7 @@ app.post('/api/tariff_group', function(req, res) {
     var tariff_group = new TariffGroupModel({
         name             : req.body.name,
         use_norm         : req.body.use_norm,
+        volume_precision : req.body.volume_precision,
         use_space        : req.body.use_space,
         use_common_space : req.body.use_common_space,
         use_residents    : req.body.use_residents,
@@ -740,6 +741,7 @@ app.put('/api/tariff_group/:id', function (req, res){
 
         tariff_group.name             = req.body.name;
         tariff_group.use_norm         = req.body.use_norm;
+        tariff_group.volume_precision = req.body.volume_precision;
         tariff_group.use_space        = req.body.use_space;
         tariff_group.use_common_space = req.body.use_common_space;
         tariff_group.use_residents    = req.body.use_residents;
@@ -808,6 +810,7 @@ app.post('/api/tariff', function(req, res) {
     var tariff = new TariffModel({
         number           : req.body.number,
         rate             : req.body.rate,
+        static_norm      : req.body.static_norm,
         _tariff_group    : req.body._tariff_group,
     });
 
@@ -856,6 +859,7 @@ app.put('/api/tariff/:id', function (req, res){
 
         tariff.number           = req.body.number;
         tariff.rate             = req.body.rate;
+        tariff.static_norm      = req.body.static_norm;
         tariff._tariff_group    = req.body._tariff_group;
 
         return tariff.save(function (err) {

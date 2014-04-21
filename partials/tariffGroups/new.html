@@ -14,6 +14,12 @@
     </div>
   </div>
   <div class="form-group">
+    <label class="col-sm-3 control-label" >Количество знаков после запятой в объёме услуги</label>
+    <div class="col-sm-9">
+      <input ng-model="tariff_group.volume_precision" class="form-control" type="number" integer required>
+    </div>
+  </div>
+  <div class="form-group">
     <label class="col-sm-3 control-label" >Использовать площадь</label>
     <div class="col-sm-9">
       <input ng-model="tariff_group.use_space" type="checkbox">
@@ -37,7 +43,7 @@
       <select ng-model="tariff_group.norm_dimension" class="form-control" required>
         <option>-</option>
         <option>м3/чел.</option>
-        <option>кВтч/чел.</option>
+        <option>кВтч/м2</option>
         <option>ГКал/м2</option>
       </select>
     </div>
@@ -57,9 +63,9 @@
     <label class="col-sm-3 control-label">Назначение</label>
     <div class="col-sm-9">
       <select ng-model="tariff_group.executor" class="form-control" required>
-        <option>Обслуживание МКД</option>
-        <option>Дальтеплоэнерго</option>
-        <option>Водоканал</option>
+        <option>Обслуживание жилого фонда</option>
+        <option>Водоснабжение и водоотведение</option>
+        <option>Дальэнерго</option>
       </select>
     </div>
   </div>

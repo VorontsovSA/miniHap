@@ -30,18 +30,20 @@ var Period = new Schema({
 var TariffGroup = new Schema({
   name:                String,
   use_norm:            { type: Boolean, default: false},
+  volume_precision:    { type: Number, default: 2},
   use_space:           { type: Boolean, default: false},
   use_common_space:    { type: Boolean, default: false},
   use_residents:       { type: Boolean, default: false},
-  norm_dimension:      { type: String, enum: ['-', 'м3/чел.', 'кВтч/чел.', 'ГКал/м2'] },
+  norm_dimension:      { type: String, enum: ['-', 'м3/чел.', 'кВтч/м2', 'ГКал/м2'] },
   value_dimension:     { type: String, enum: ['м2', 'м3', 'кВтч', 'ГКал'] },
-  executor:            { type: String, enum: ['Обслуживание МКД', 'Дальтеплоэнерго', 'Водоканал'] },
+  executor:            { type: String, enum: ['Обслуживание жилого фонда', 'Водоснабжение и водоотведение', 'Дальэнерго'] },
   sort:                { type: Number, default: 1}
 });
 
 var Tariff = new Schema({
   number:              String,
   rate:                Number,
+  static_norm:         { type: Boolean, default: false },
   _tariff_group:       { type: Schema.Types.ObjectId, ref: 'TariffGroup' }
 });
 
@@ -82,6 +84,7 @@ var Charge = new Schema({
   value:               { type: Number, default: null },
   reappraisal_auto:    { type: Number, default: 0 },
   reappraisal_manual:  { type: Number, default: 0 },
+  debt:                { type: Number, default: 0 },
   _apartment:          { type: Schema.Types.ObjectId, ref: 'Apartment' },
   _tariff_group:       { type: Schema.Types.ObjectId, ref: 'TariffGroup' },
   period:              Date

@@ -23,20 +23,20 @@
         <th>Площадь МОП</th>
         <td>{{common_space}}</td>
       </tr>
-      <tr ng-show="tab.tariff_group.use_norm">
+      <!--tr ng-show="tab.tariff_group.use_norm">
         <th>Тип расчета</th>
         <td>
           <label><input type="radio" ng-model="tab.by_volume" value="1" /> По показаниям</label>
           <label><input type="radio" ng-model="tab.by_volume" value="0" /> По нормативу</label>
         </td>
-      </tr>
-      <tr ng-show="tab.tariff_group.use_norm">
+      </tr-->
+      <tr ng-show="tab.tariff_group.use_norm && !tab.tariff.static_norm">
         <th>Общедомовые показания</th>
-        <td ng-class="(tab.by_volume == 1 ? 'nopad' : '')"><input type="number" class="form-control" ng-model="tab.volume" ng-show="tab.by_volume == 1"></td>
+        <td ng-class="(tab.by_volume == 1 ? 'nopad' : '')"><input type="number" class="form-control" ng-model="tab.volume" ng-show="!tab.tariff.static_norm"></td>
       </tr>
-      <tr ng-show="tab.tariff_group.use_norm">
+      <tr ng-show="tab.tariff_group.use_norm && tab.tariff.static_norm">
         <th>Норматив</th>
-        <td><input type="number" class="form-control" ng-model="tab.norm" ng-show="tab.by_volume == 0"></td>
+        <td><input type="number" class="form-control" ng-model="tab.norm" ng-show="tab.tariff.static_norm"></td>
       </tr>
     </table>
     <table class="table table-condensed">
@@ -55,7 +55,7 @@
       <tr ng-repeat="apt in apts | object2Array | orderBy: 'number'">
         <td>{{apt.number}}</td>
         <td>{{apt.contractor}}</td>
-        <td><input ng-model="apt.charges[tab.tariff_group_id].has_counter" type="checkbox"></td>
+        <td><input ng-show="tab.tariff_group.use_norm" ng-model="apt.charges[tab.tariff_group_id].has_counter" type="checkbox"></td>
         <td>{{apt.charges[tab.tariff_group_id].norm}}</td>
         <td>
           <input ng-show="apt.charges[tab.tariff_group_id].has_counter" class="form-control" ng-model="apt.charges[tab.tariff_group_id].volume" smartFloat>
