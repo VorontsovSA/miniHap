@@ -102,6 +102,87 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Peri
 
 hapControllers.controller('BuildingsCtrl', ['$scope', 'Building', function($scope, Building) {
   $scope.buildings = Building.query();
+
+  $scope.quittances = function (building_id) {
+    // var doc = new jsPDF();
+    // doc.setFont("Times", "Bold");
+    // doc.setFontType("Roman");
+    // doc.text(20, 20, 'Привет Олег!');
+    // doc.text(20, 30, 'This is client-side Javascript, pumping out a PDF.');
+    // doc.addPage();
+    // doc.text(20, 20, 'Do you like that?');
+    // doc.save('q.pdf');
+    var fs = require('fs');
+    var margin = 72,
+        font_size = 10,
+        font_size_large = 12;
+    var PDFDocument = require ('pdfkit');
+    var doc = new PDFDocument({
+        margins: {
+          top: 45,
+          bottom: 45,
+          left: margin,
+          right: 45
+        }
+    });
+    doc.pipe(fs.createWriteStream('file.pdf'));
+    doc.font('fonts/times.ttf');
+    doc.fontSize(font_size);
+    doc.text('УФК по Приморскому краю (федеральное государственное казенное учреждение "2 отряд федеральной противопожарной службы по Приморскому краю)');
+    doc.moveDown();
+    doc.text('ИНН 2536047692     КПП 253601001     ОКТМО 05701000');
+    doc.text('р/сч 40101810900000010002 в ГРКЦ ГУ Банка России по Приморскому краю г.Владивосток');
+    doc.text('БИК 040507001');
+    doc.font('fonts/timesbd.ttf');
+    doc.fontSize(font_size_large);
+    doc.text('Код бюджетной классификации КБК: 177 113 0206101 7000 130');
+    doc.font('fonts/times.ttf');
+    doc.fontSize(font_size);
+    doc.moveDown();
+    doc.text('ПЛАТЕЛЬЩИК', 200);
+    doc.text('ФИО:', margin).moveUp().text('Иванов В.М.', 200);
+    doc.text('Адрес:', margin).moveUp().text('ул. Русская, 73-а, ком.24', 200);
+    doc.text('Проживающих:', margin).moveUp().text('3', 200);
+    doc.text('Площадь:', margin).moveUp().text('33', 200).moveUp().text('Январь 2014 год', 450);
+    doc.moveDown();
+    doc.text('ОПЛАЧЕНО: _________________', 150);
+    var table = [[ 'Ремонт жилья', '1000.00' ],[ 'Содержание жилья', '1000.00' ],[ 'Водоотведение', '1000.00' ]];
+    var heading = [ 'Вид услуги', 'Сумма'];
+    var columns = [ 200, 72 ];
+    var head_align = ['center', 'center'];
+    var body_align = ['left', 'right'];
+    var size = [ 2, 3 ];
+    for (var i = 0; i < size[0]; i++) {
+      doc.text(heading[i], 3 + margin + ((i == 0) ? 0 : columns[i-1]), doc.y, {width: columns[i] - 6, align: head_align[i]}).moveUp();
+    };
+    doc.moveDown();
+    for (var i = 0; i < size[1]; i++) {
+      for (var j = 0; j < size[0]; j++) {
+        doc.text(table[i][j], 3 + margin + ((j == 0) ? 0 : columns[j-1]), doc.y, {width: columns[j] - 6, align: body_align[j]}).moveUp();
+      }
+      doc.moveDown();
+    };
+    doc.moveUp(size[1] + 1);
+    var x = margin;
+    var y = doc.y;
+    var shift = 0;
+    doc.lineWidth(0.5);
+    for (var i = 0; i <= size[0]; i++) {
+      doc.moveTo(x + shift, y + 0)
+         .lineTo(x + shift, y + doc.currentLineHeight(true) * (size[1] + 1) + 0)
+         .stroke();
+      shift += (columns[i]) ? columns[i] : 0;
+    };
+    //var shift = 0;
+    for (var i = 0; i <= size[1] + 1; i++) {
+      console.log('line');
+      doc.moveTo(x, y + doc.currentLineHeight(true) * i + 0)
+         .lineTo(x + shift, y + doc.currentLineHeight(true) * i + 0)
+         .stroke();
+    };
+    doc.end();
+    // doc.save();
+  }
 }]);
 
 hapControllers.controller('BuildingsNewCtrl', ['$scope', '$routeParams', '$location', 'Building', 'Tariff', '$http',
