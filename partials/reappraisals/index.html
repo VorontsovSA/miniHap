@@ -11,7 +11,8 @@
   </thead>
   <tbody>
     <tr ng-repeat="building in buildings">
-      <td><a href="#/reappraisals/selectperiod/{{building._id}}">Ул.{{building.street}} дом.{{building.number}}</a></td>
+      <td ng-show="is_last_month"><a href="#/reappraisals/selectperiod/{{building._id}}">Ул.{{building.street}} дом.{{building.number}}</a></td>
+      <td ng-show="!is_last_month">Ул.{{building.street}} дом.{{building.number}}</td>
       <td>{{building.description}}</td>
     </tr>
   </tbody>

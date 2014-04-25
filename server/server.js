@@ -6,6 +6,7 @@
 var express            = require('express');
 var path               = require('path'); // модуль для парсинга пути
 var log                = require('./libs/log')(module);
+var OptionsModel       = require('./libs/mongoose').OptionsModel;
 var TariffGroupModel   = require('./libs/mongoose').TariffGroupModel;
 var TariffModel        = require('./libs/mongoose').TariffModel;
 var BuildingModel      = require('./libs/mongoose').BuildingModel;
@@ -183,6 +184,41 @@ app.get('/api/charges_for_reappraisal/:id/:tariff_groups/:period', function(req,
     }
   });
 });
+// Charges for apartment
+app.get('/api/charges_for_apt/:apartment_id', function(req, res) {
+  ApartmentModel.findById(req.params.apartment_id, function (err, apartment) {
+    if(!apartment) {
+      res.statusCode = 404;
+      return res.send({ error: 'Not found' });
+    }
+    if (!err) {
+      ApartmentModel.find({'_building' : apartment._building, 'number' : apartment.number }).exec(function (err, apartments) {
+        if (!err) {
+          var apartments_ids = [];
+          apartments.forEach(function(apt, key){
+            apartments_ids.push(apt._id.toString());
+          });
+          ChargeModel.find({ _apartment: { $in: apartments_ids } }, function(err, charges) {
+            if(!err)
+            {
+              return res.send(charges);
+            } else {
+              console.log({ error: 'Internal error(%d): %s' + res.statusCode + err.message });
+            }
+          });
+        } else {
+          res.statusCode = 500;
+          log.error('Internal error(%d): %s',res.statusCode,err.message);
+          return res.send({ error: 'Internal error(%d): %s' + res.statusCode + err.message });
+        }
+      });
+    } else {
+      res.statusCode = 500;
+      log.error('Internal error(%d): %s',res.statusCode,err.message);
+      return res.send({ error: 'Server error' });
+    }
+  });
+});
 // Saving charges
 app.post('/api/save_charges_for_building', function(req, res) {
   var charges = req.body.charges;
@@ -333,7 +369,10 @@ app.get('/api/new_period/:from/:to', function(req, res) {
         // Cloning charges
         ChargeModel.find({ '_apartment' : apt._id, 'period' : req.params.from }, function (err, charges) {
           if (!err) {
-            cloneCharges(charges, apts, apartment._id);
+            if (!charges.length && apts.length)
+              return cloneApartment(apts);
+            else
+              cloneCharges(charges, apts, apartment._id);
           } else {
             res.statusCode = 500;
             log.error('Internal error(%d): %s',res.statusCode,err.message);
@@ -437,6 +476,49 @@ app.post('/api/clear_reappraisal', function(req, res) {
     });
   }
   saveCharge(charges);
+});
+// Find apt by name
+app.post('/api/find_apt', function(req, res) {
+  console.log(req);
+  var contractor = req.body.name.split(' ');
+  ApartmentModel.findOne({ 'contractor.last_name' : contractor[0], 'contractor.first_name' : contractor[1], 'contractor.second_name' : contractor[2], 'period' : req.body.period })
+  .populate('_building')
+  .exec(function (err, apartment) {
+    if (!err) {
+      return res.send(apartment);
+    } else {
+      res.statusCode = 500;
+      log.error('Internal error(%d): %s',res.statusCode,err.message);
+      return res.send({ error: 'Internal error(%d): %s' + res.statusCode + err.message });
+    }
+  });
+});
+// Find apt by name
+app.post('/api/save_debts', function(req, res) {
+  var debts = req.body.data;
+  var count = debts.length;
+  function processApt(debts)
+  {
+    var debt = debts.pop();
+    ApartmentModel.findOneAndUpdate({_id: debt[0]}, {debt: debt[1]}, function (err, apartment) {
+      if (!err) {
+        if(debts.length)
+          processApt(debts);
+        else {
+          return res.send({count: count});
+        }
+      } else {
+        res.statusCode = 500;
+        log.error('Internal error(%d): %s',res.statusCode,err.message);
+        return res.send({ error: 'Internal error(%d): %s' + res.statusCode + err.message });
+      }
+    });
+  }
+  if(debts.length) {
+    processApt(debts);
+  } else {
+    return res.send(0);
+  }
 });
 //#################################
 //#######    Buildings   ##########
@@ -572,6 +654,7 @@ app.post('/api/apartment', function(req, res) {
         space            : req.body.space,
         common_space     : req.body.common_space,
         residents        : req.body.residents,
+        debt             : req.body.debt,
         _building        : req.body._building,
         period           : req.body.period,
     });
@@ -626,6 +709,7 @@ app.put('/api/apartment/:id', function (req, res){
         apartment.new_space        = req.body.new_space;
         apartment.new_common_space = req.body.new_common_space;
         apartment.new_residents    = req.body.new_residents;
+        apartment.debt             = req.body.debt;
         apartment._building        = req.body._building;
         apartment.period           = req.body.period;
 
@@ -671,6 +755,10 @@ app.delete('/api/apartment/:id', function (req, res){
 //#################################
 
 app.get('/api/tariff_group', function(req, res) {
+    var query = {};
+    if(req.query.ids) {
+      query = { _id: { $in: req.query.ids.split(',') }};
+    }
     return TariffGroupModel.find().sort('sort').exec(function (err, tariff_groups) {
         if (!err) {
             return res.send(tariff_groups);
@@ -915,6 +1003,18 @@ app.get('/api/period/many', function(req, res) {
   });
 });
 
+app.get('/api/period/all', function(req, res) {
+  return PeriodModel.find().sort('date').exec(function (err, periods) {
+    if (!err) {
+      return res.send(periods);
+    } else {
+      res.statusCode = 500;
+      log.error('Internal error(%d): %s',res.statusCode,err.message);
+      return res.send({ error: 'Server error' });
+    }
+  });
+});
+
 app.get('/api/period/date', function(req, res) {
     return PeriodModel.findOne({ date: req.query.date }).exec(function (err, period) {
         if (!err) {
@@ -1043,6 +1143,69 @@ app.delete('/api/period/one/:id', function (req, res){
                 res.statusCode = 500;
                 log.error('Internal error(%d): %s',res.statusCode,err.message);
                 return res.send({ error: 'Server error' });
+            }
+        });
+    });
+});
+
+//#################################
+//#######      Options     ########
+//#################################
+
+app.get('/api/options', function(req, res) {
+    return OptionsModel.findOne({}, function (err, options) {
+        if (!err) {
+          if(options)
+          {
+            return res.send(options);
+          }
+          else
+          {
+            var options = new OptionsModel();
+            options.save(function (err) {
+              if (!err) {
+                return res.send(options);
+              }
+              else
+              {
+                console.log("Error");
+              }
+            });
+          }
+        } else {
+            res.statusCode = 500;
+            log.error('Internal error(%d): %s',res.statusCode,err.message);
+            return res.send({ error: 'Server error' });
+        }
+    });
+});
+
+app.put('/api/options/:id', function (req, res){
+    console.log('id = ' + req.params.id);
+    return OptionsModel.findOne({}, function (err, options) {
+        if(!options) {
+            res.statusCode = 404;
+            return res.send({ error: 'Not found' });
+        }
+
+        options.quittance_line1    = req.body.quittance_line1;
+        options.quittance_line2    = req.body.quittance_line2;
+        options.quittance_line3    = req.body.quittance_line3;
+        options.quittance_line4    = req.body.quittance_line4;
+
+        return options.save(function (err) {
+            if (!err) {
+                log.info("options updated");
+                return res.send(options);
+            } else {
+                if(err.name == 'ValidationError') {
+                    res.statusCode = 400;
+                    res.send({ error: 'Validation error' });
+                } else {
+                    res.statusCode = 500;
+                    res.send({ error: 'Server error' });
+                }
+                log.error('Internal error(%d): %s',res.statusCode,err.message);
             }
         });
     });

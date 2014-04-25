@@ -61,6 +61,7 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Peri
           $rootScope.period_before = Period.getByDate({ 'date': moment($rootScope.current_period.date).add('months', -1).format()}, function (period) {
             if(!period.date) $rootScope.is_first_month = true;
           });
+          $('.navbar').notify("Информация за следующий период удалена", 'success');
           $location.path('/buildings');
         }).
         error(function(data, status) {
@@ -87,6 +88,7 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Peri
         success(function(data, status) {
           $scope.status = status;
           $scope.data = data;
+          $('.navbar').notify("Создан новый период для проведения начислений", 'success');
           $location.path('/buildings');
         }).
         error(function(data, status) {
@@ -100,8 +102,8 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Peri
 //#######    Buildings   ##########
 //#################################
 
-hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', '$http', 'Apartment', 'moment', 
-  function($scope, $rootScope, Building, $http, Apartment, moment) {
+hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', '$http', 'Apartment', 'moment', 'Options',
+  function($scope, $rootScope, Building, $http, Apartment, moment, Options) {
   $scope.buildings = Building.query();
 
   $scope.quittances = function (building_id) {
@@ -109,6 +111,7 @@ hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', 
     success(function(building_data, status) {
       var date = moment($rootScope.current_period.date).format('MMMM YYYY');
       var data = {
+        options     : null,
         street      : building_data.street,
         number      : building_data.number,
         description : building_data.description,
@@ -137,7 +140,7 @@ hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', 
             common_space : apt.common_space,
             date         : date,
             total        : 0,
-            total_debt   : 0,
+            total_debt   : apt.debt,
             executors: []
           };
           angular.forEach(building_data.tariffs, function(tariff, key){
@@ -155,16 +158,30 @@ hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', 
             }
           });
         });
-        $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_building/' + building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
+        $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_reappraisal/' + building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
         success(function(charges, status) {
           angular.forEach(charges, function(charge, key){
             data.apts[charge._apartment].executors[tariff_group_executor[charge._tariff_group]].tariff_groups[charge._tariff_group].charge = charge;
             data.apts[charge._apartment].total += charge.value + charge.reappraisal_auto + charge.reappraisal_manual;
-            data.apts[charge._apartment].total_debt += charge.debt;
+            // data.apts[charge._apartment].total_debt += charge.debt;
             data.apts[charge._apartment].executors[tariff_group_executor[charge._tariff_group]].total += charge.value + charge.reappraisal_auto + charge.reappraisal_manual;
           })
-          console.log(data);
-          require('./libs/quittances').generate(data);
+          Options.get(function(options){
+            data.options = options;
+            console.log(data);
+            var ready2send = true;
+            angular.forEach(data.apts, function(apt, aid){
+              angular.forEach(apt.executors, function(executor, eid){
+                angular.forEach(executor.tariff_groups, function(tariff_group, tid){
+                  if(!tariff_group.charge || !tariff_group.charge.value) {
+                    ready2send = false;
+                    $('.navbar').notify("Нет начисления по " + tariff_group.tariff_group.name + ' (' + apt.address + ')', 'error');
+                  }
+                });
+              });
+            });
+            if(ready2send) require('./libs/quittances').generate(data, $('.navbar'));
+          });
         }).
         error(function(data, status) {
           console.log("Request failed");
@@ -174,25 +191,61 @@ hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', 
     error(function(data, status) {
       console.log("Request failed");
     });
-    //##########################################
-    // var datum = [{
-    //   apt: {},
-    //   total: 0,
-    //   total_debt: 0,
-    //   executors: [{
-    //     name: '',
-    //     total: 0,
-    //     tariff_groups: [{
-    //       tariff_group: {},
-    //       tariff: {},
-    //       charges: [{}]
-    //     }]
-    //   }]
-    // }];
   }
 
   $scope.saldo = function (building_id) {
-    // var quittances = new Quittances();
+    var data = {};
+    $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + building_id}).
+    success(function(building_data, status) {
+      var date = moment($rootScope.current_period.date).format('MMMM YYYY');
+      var data = {
+        street      : building_data.street,
+        number      : building_data.number,
+        description : building_data.description,
+        date_text   : moment($rootScope.current_period.date).format('MMMM YYYY'),
+        date        : moment($rootScope.current_period.date).format('YYYY.MM'),
+        head        : [],
+        apts        : []
+      };
+      var tariff_group_ids = [];
+      angular.forEach(building_data.tariffs, function(tariff, key){
+        data.head.push(tariff._tariff_group.name);
+        tariff_group_ids.push(tariff._tariff_group._id);
+      });
+      var apartments = Apartment.query({building_id: building_id, period: $rootScope.current_period.date}, function(apartments)
+      {
+        var apartment_ids = [];
+        angular.forEach(apartments, function(apt, key){
+          apartment_ids.push(apt._id);
+          data.apts.push({
+            address      : 'ул. ' + building_data.street + ', д. ' + building_data.number + ', к. ' + apt.number,
+            number       : apt.number,
+            contractor   : apt.contractor.last_name + ' ' + apt.contractor.first_name + ' ' + apt.contractor.second_name,
+            total        : 0,
+            total_debt   : 0,
+            tariff_groups: []
+          });
+        });
+        $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_reappraisal/' + building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
+        success(function(charges, status) {
+          console.log(apartment_ids);
+          console.log(data);
+          angular.forEach(charges, function(charge, key){
+            data.apts[apartment_ids.indexOf(charge._apartment)].total += charge.value + charge.reappraisal_auto + charge.reappraisal_manual;
+            data.apts[apartment_ids.indexOf(charge._apartment)].total_debt += charge.debt;
+            data.apts[apartment_ids.indexOf(charge._apartment)].tariff_groups[tariff_group_ids.indexOf(charge._tariff_group)] = (charge.value + charge.reappraisal_auto + charge.reappraisal_manual).toFixed(2);
+          })
+          console.log(data);
+          require('./libs/excel-report').generateSaldo(data, $('.navbar'));
+        }).
+        error(function(data, status) {
+          console.log("Request failed");
+        });
+      });
+    }).
+    error(function(data, status) {
+      console.log("Request failed");
+    });
   }
 }]);
 
@@ -203,6 +256,7 @@ hapControllers.controller('BuildingsNewCtrl', ['$scope', '$routeParams', '$locat
   $scope.save = function(building) {
     console.log(building);
     Building.save(building, function() {
+      $('.navbar').notify("Дом добавлен", 'success');
       $location.path('/buildings');
     });
   };
@@ -218,6 +272,7 @@ hapControllers.controller('BuildingsEditCtrl', ['$scope', '$routeParams', '$loca
     var dlg = $dialogs.confirm('Внимание','Действительно хотите удалить дом и все связанные объекты?');
     dlg.result.then(function(btn){
       $scope.building.$delete(function() {
+        $('.navbar').notify("Дом удален", 'success');
         $location.path('/buildings');
       });
     },function(btn){});
@@ -225,6 +280,7 @@ hapControllers.controller('BuildingsEditCtrl', ['$scope', '$routeParams', '$loca
 
   $scope.save = function() {
     $scope.building.$update(function() {
+      $('.navbar').notify("Информация о доме обновлена", 'success');
       $location.path('/buildings');
     });
   };
@@ -234,10 +290,60 @@ hapControllers.controller('BuildingsEditCtrl', ['$scope', '$routeParams', '$loca
 //#######   Apartments  ##########
 //#################################
 
-hapControllers.controller('ApartmentsCtrl', ['$scope', '$rootScope', '$routeParams', 'Building', 'Apartment', '$http',
-  function($scope, $rootScope, $routeParams, Building, Apartment, $http) {
+hapControllers.controller('ApartmentsCtrl', ['$scope', '$rootScope', '$routeParams', 'Building', 'Apartment', '$http', 'moment', 'TariffGroup', 'Period',
+  function($scope, $rootScope, $routeParams, Building, Apartment, $http, moment, TariffGroup, Period) {
   $scope.building = Building.get({id: $routeParams.building_id});
   $scope.apartments = Apartment.query({building_id: $routeParams.building_id, period: $rootScope.current_period.date});
+
+  $scope.act = function (apartment_id, apt_number) {
+    var data = {};
+    $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_apt/' + apartment_id}).
+    success(function(charges, status) {
+      var tariff_group_ids = [];
+      var data = {
+        street: $scope.building.street,
+        number: $scope.building.number,
+        apt_number: apt_number,
+        head: [],
+        body: []
+      };
+      angular.forEach(charges, function(charge, key){
+        tariff_group_ids.push(charge._tariff_group);
+      });
+      Period.getAll(function (periods) {
+        data.head.push('Период');
+        TariffGroup.query({ 'ids': tariff_group_ids.join(',') }, function (tariff_groups) {
+          var tariff_group_map = [];
+          angular.forEach(tariff_groups, function(tariff_group, key){
+            data.head.push(tariff_group.name);
+            tariff_group_map.push(tariff_group._id);
+          });
+          var period_map = [];
+          angular.forEach(periods, function(period, key){
+            var row = [];
+            period_map.push(moment(period.date).format('MM.YYYY'))
+            row.push(moment(period.date).format('MMMM YYYY'))
+            angular.forEach(tariff_groups, function(tariff_group, key){
+              row.push(0);
+            });
+            data.body.push(row);
+          });
+          console.log(period_map);
+          console.log(tariff_group_map);
+          angular.forEach(charges, function(charge, key){
+            console.log(period_map.indexOf(moment(charge.period).format('MM.YYYY')) + ' ' + moment(charge.period).format('MM.YYYY'));
+            console.log(tariff_group_map.indexOf(charge._tariff_group) + 1);
+            data.body[period_map.indexOf(moment(charge.period).format('MM.YYYY'))][tariff_group_map.indexOf(charge._tariff_group) + 1] = (charge.value + charge.reappraisal_auto + charge.reappraisal_manual).toFixed(2);
+          })
+          console.log(data);
+          require('./libs/excel-report').generateAct(data, $('.navbar'));
+        });
+      });
+    }).
+    error(function(data, status) {
+      console.log("Request failed");
+    });
+  }
 }]);
 
 hapControllers.controller('ApartmentsNewCtrl', ['$scope', '$rootScope', '$routeParams', '$location', 'Building', 'Apartment', '$http',
@@ -248,6 +354,7 @@ hapControllers.controller('ApartmentsNewCtrl', ['$scope', '$rootScope', '$routeP
   $scope.save = function(apartment) {
     console.log(apartment);
     Apartment.save(apartment, function() {
+      $('.navbar').notify("Квартира добавлена", 'success');
       $location.path('/apartments/' + $scope.building._id);
     });
   };
@@ -264,6 +371,7 @@ hapControllers.controller('ApartmentsEditCtrl', ['$scope', '$routeParams', '$loc
     var dlg = $dialogs.confirm('Внимание','Действительно хотите удалить квартиру?');
     dlg.result.then(function(btn){
       $scope.apartment.$delete(function() {
+        $('.navbar').notify("Квартира удалена", 'success');
         $location.path('/apartments/' + $scope.building._id);
       });
     },function(btn){});
@@ -271,6 +379,7 @@ hapControllers.controller('ApartmentsEditCtrl', ['$scope', '$routeParams', '$loc
 
   $scope.save = function() {
     $scope.apartment.$update(function() {
+      $('.navbar').notify("Информация о квартире обновлена", 'success');
       $location.path('/apartments/' + $scope.building._id);
     });
   };
@@ -285,6 +394,7 @@ hapControllers.controller('ApartmentsEditChangesCtrl', ['$scope', '$routeParams'
 
   $scope.save = function() {
     $scope.apartment.$update(function() {
+      $('.navbar').notify("Информация о квартире обновлена", 'success');
       $location.path('/apartments/' + $scope.building._id);
     });
   };
@@ -313,6 +423,7 @@ hapControllers.controller('TariffGroupsEditCtrl', ['$scope', '$routeParams', '$l
     var dlg = $dialogs.confirm('Внимание','Действительно хотите удалить группу тарифов и все связанные объекты?');
     dlg.result.then(function(btn){
       $scope.tariff_group.$delete(function() {
+        $('.navbar').notify("Группа тарифов удалена", 'success');
         $location.path('/tariffGroups');
       });
     },function(btn){
@@ -323,6 +434,7 @@ hapControllers.controller('TariffGroupsEditCtrl', ['$scope', '$routeParams', '$l
   $scope.save = function() {
     console.log($scope.tariff_group._id);
     $scope.tariff_group.$update(function() {
+      $('.navbar').notify("Группа тарифов сохранена", 'success');
       $location.path('/tariffGroups');
     });
   };
@@ -355,6 +467,7 @@ hapControllers.controller('TariffsNewCtrl',
   $scope.save = function(tariff) {
     console.log(tariff);
     Tariff.save(tariff, function() {
+      $('.navbar').notify("Тариф создан", 'success');
       $location.path('/tariffs');
     });
   };
@@ -381,6 +494,7 @@ hapControllers.controller('TariffsEditCtrl', ['$scope', '$routeParams', '$locati
     var dlg = $dialogs.confirm('Внимание','Действительно хотите удалить тариф?');
     dlg.result.then(function(btn){
       $scope.tariff.$delete(function() {
+        $('.navbar').notify("Тариф удален", 'success');
         $location.path('/tariffs');
       });
     },function(btn){
@@ -391,6 +505,7 @@ hapControllers.controller('TariffsEditCtrl', ['$scope', '$routeParams', '$locati
   $scope.save = function() {
     console.log($scope.tariff._id);
     $scope.tariff.$update(function() {
+      $('.navbar').notify("Тариф сохранен", 'success');
       $location.path('/tariffs');
     });
   };
@@ -443,6 +558,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
         // console.log('STARTED');
         console.log(charges);
         var total_volume = {};
+        var total_norm = {};
         angular.forEach(charges, function(charge, key){
         // charges.forEach(function(charge) {
           // console.log(charge);
@@ -456,6 +572,9 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
             reappraisal_auto:    charge.reappraisal_auto,
             reappraisal_manual:  charge.reappraisal_manual
           };
+          if(!charge.has_counter && charge.norm != null)
+            total_norm[charge._tariff_group] = Number(charge.norm);
+
           if(total_volume[charge._tariff_group])
             total_volume[charge._tariff_group] += Number(charge.volume);
           else
@@ -478,7 +597,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
             tariff: tariff,
             by_volume: true,
             volume: total_volume[tariff._tariff_group._id],
-            norm: 0,
+            norm: (total_norm[tariff._tariff_group._id]) ? total_norm[tariff._tariff_group._id] : 0,
             calc_var: calc_var
           };
 
@@ -489,7 +608,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
           var updateCharges = function() {
             // console.log($scope.apts);
             if(!tariff._tariff_group.use_norm) {
-              // console.log('Not Use norm');
+              console.log('Not Use norm');
               angular.forEach($scope.apts, function(apt, key){
                 var calc_var = 0;
                 if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
@@ -503,8 +622,8 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
             }
             else
             {
-              // console.log('Use norm');
-              if($scope.tabs[tariff._tariff_group._id].by_volume == 1) {
+              console.log('Use norm');
+              if(!$scope.tabs[tariff._tariff_group._id].tariff.static_norm) {
                 // console.log('Update charges for volume');
                 var max_value = null;
                 var max_key   = null;
@@ -572,6 +691,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
           });
           // Watching common norm
           $scope.$watch("tabs['" + tariff._tariff_group._id + "'].norm", function( newValue ) {
+            console.log('Update charges for norm field');
             // console.log( "$watch : " + newValue );
             updateCharges();
           });
@@ -616,6 +736,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
     // console.log(charges);
     $http({method: 'POST', url: 'http://localhost:1337/api/save_charges_for_building', data: {charges: charges}}).
     success(function(data, status) {
+      $('.navbar').notify("Информация о начислениях сохранена", 'success');
       $scope.data = data || "Request failed";
       $scope.status = status;
     }).
@@ -625,7 +746,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
     });
   };
   $scope.clearReappraisal = function() {
-    var dlg = $dialogs.confirm('Внимание','Действительно хотите обнулить проведенные перерасчеты?');
+    var dlg = $dialogs.confirm('Внимание','Действительно хотите обнулить проведенные перерасчеты?', 'success');
     dlg.result.then(function(btn){
       console.log('Clearing reappraisal');
       var charges = [];
@@ -641,6 +762,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
       // console.log(charges);
       $http({method: 'POST', url: 'http://localhost:1337/api/clear_reappraisal', data: {charges: charges}}).
       success(function(data, status) {
+        $('.navbar').notify("Перерасчеты за прошлые периоды обнулены", 'success');
         $scope.data = data || "Request failed";
         $scope.status = status;
       }).
@@ -806,7 +928,7 @@ hapControllers.controller('ReappraisalsBuildingCtrl', ['$scope', '$rootScope', '
                   real_sum += Number($scope.apts[key].charges[tariff._tariff_group._id].new_volume);
                   $scope.apts[key].charges[tariff._tariff_group._id].new_value = ($scope.apts[key].charges[tariff._tariff_group._id].new_volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
                   // console.log('new new_value = ' + $scope.apts[key].charges[tariff._tariff_group._id].new_volume);
-                  $scope.apts[key].charges[tariff._tariff_group._id].reappraisal_auto = $scope.apts[key].charges[tariff._tariff_group._id].new_value - $scope.apts[key].charges[tariff._tariff_group._id].value;
+                  $scope.apts[key].charges[tariff._tariff_group._id].reappraisal_auto = ($scope.apts[key].charges[tariff._tariff_group._id].new_value - $scope.apts[key].charges[tariff._tariff_group._id].value).toFixed(2);
                 });
                 if (real_sum != $scope.tabs[tariff._tariff_group._id].volume) {
                   // console.log($scope.tabs[tariff._tariff_group._id].volume);
@@ -877,6 +999,7 @@ hapControllers.controller('ReappraisalsBuildingCtrl', ['$scope', '$rootScope', '
     console.log(charges);
     $http({method: 'POST', url: 'http://localhost:1337/api/save_reappraisal_for_building', data: {charges: charges}}).
     success(function(data, status) {
+      $('.navbar').notify("Информация о перерасчете добавлена к текущему начислению", 'success');
       $scope.data = data || "Request failed";
       $scope.status = status;
     }).
@@ -891,9 +1014,133 @@ hapControllers.controller('ReappraisalsBuildingCtrl', ['$scope', '$rootScope', '
 //#######     Debts      ##########
 //#################################
 
-hapControllers.controller('DebtsCtrl', ['$scope', 'Building', function($scope, Building) {
-  $scope.buildings = Building.query();
+hapControllers.controller('DebtsCtrl', ['$rootScope', '$scope', '$http', function($rootScope, $scope, $http) {
+  $scope.file = null;
+  $scope.ready2save = false;
+  $scope.change = function(file) {
+    $scope.ready2save = false;
+    var XLSX = require('xlsx');
+    var workbook = XLSX.readFile(file);
+    var sheet_name_list = workbook.SheetNames;
+    var result = [];
+    function decode_col(c) { var d = 0, i = 0; for(; i !== c.length; ++i) d = 26*d + c.charCodeAt(i) - 64; return d - 1; }
+    function decode_row(rowstr) { return Number(rowstr) - 1; }
+    function split_cell(cstr) { return cstr.replace(/(\$?[A-Z]*)(\$?[0-9]*)/,"$1,$2").split(","); }
+    function decode_cell(cstr) { var splt = split_cell(cstr); return { c:decode_col(splt[0]), r:decode_row(splt[1]) }; }
+    function init_result(range) {
+      var range_converted = range.split(":");
+      console.log(range_converted);
+      var cell_start = decode_cell(range_converted[0]);
+      var cell_end   = decode_cell(range_converted[1]);
+      var result = [];
+      console.log(cell_end);
+      for (var i = 0; i <= cell_end.r; i++) {
+        result[i] = [];
+        for (var j = 0; j <= cell_end.c; j++) {
+          result[i][j] = '';
+        };
+      };
+      return result;
+    }
+    var result = [];
+    sheet_name_list.forEach(function(y) {
+      var worksheet = workbook.Sheets[y];
+      console.log(worksheet);
+      result = init_result(worksheet["!ref"]);
+      console.log(result);
+      for (var z in worksheet) {
+        if(z[0] === '!') continue;
+        var cell = decode_cell(z);
+        console.log(decode_cell(z));
+        result[cell.r][cell.c] = worksheet[z].v;
+        console.log(y + "!" + z + "=" + JSON.stringify(worksheet[z].v));
+      }
+      console.log(result);
+    });
+    var file_corrupted = false;
+    result.forEach(function(row, key){
+      if(row.length != 2)
+      {
+        $('.navbar').notify("Неверное количество полей в строке " + (key+1), {className: 'error'});
+        file_corrupted = true;
+      } else {
+        row.push('loading');
+        row.push('В обработке');
+        row.push('');
+      }
+      if(isNaN(row[1]))
+      {
+        $('.navbar').notify("Неверно указана сумма в строке" + (key+1), {className: 'error'});
+        file_corrupted = true;
+      }
+    });
+    function processRow(i) {
+      $http({method: 'POST', url: 'http://localhost:1337/api/find_apt', data: {period: moment($rootScope.current_period.date).format(), name: result[i][0]}}).
+      success(function(data, status) {
+        console.log("Success");
+        if(data) {
+          result[i][2] = 'ул. ' + data._building.street + ', дом. ' + data._building.number + ' к. ' + data.number;
+          result[i][3] = 'Найден';
+          result[i][4] = 'success';
+          result[i][5] = data._id;
+        } else {
+          result[i][2] = '-';
+          result[i][3] = 'Не найден';
+          result[i][4] = 'danger';
+        }
+        if(result.length > ++i) {
+          processRow(i);
+        } else {
+          $scope.ready2save = true;
+        }
+      }).
+      error(function(data, status) {
+        console.log("Request failed");
+        result[i][2] = '-';
+        result[i][3] = 'Ошибка при поиске';
+        result[i][4] = 'danger';
+      });
+    };
+    if(!file_corrupted)
+    {
+      $scope.table = result;
+      if(result.length) processRow(0);
+    }
+  };
+  $scope.save = function() {
+    var data = [];
+    angular.forEach($scope.table, function(row, key){
+      if(row[4] == 'success') data.push([row[5], row[1]]);
+    });
+    console.log(data);
+    $http({method: 'POST', url: 'http://localhost:1337/api/save_debts', data: {data: data}}).
+    success(function(data, status) {
+      console.log("Success");
+      console.log(status);
+      $('.navbar').notify("Долги для " + data.count + " квартир обновлены", 'success');
+    }).
+    error(function(data, status) {
+      console.log("Request failed");
+      console.log(status);
+    });
+  };
 }]);
 
 hapControllers.controller('LoadingCtrl', ['$scope', function($scope) {
+}]);
+
+//#################################
+//#######    Options     ##########
+//#################################
+
+hapControllers.controller('OptionsCtrl', ['$scope', '$routeParams', '$location', 'Options',
+  function($scope, $routeParams, $location, Options) {
+  $scope.opts  = Options.get();
+
+  $scope.save = function() {
+    console.log($scope.opts);
+    $scope.opts.$update(function() {
+      $('.navbar').notify("Информация обновлена", 'success');
+    });
+  };
 }]);

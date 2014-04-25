@@ -32,11 +32,11 @@
       </tr-->
       <tr ng-show="tab.tariff_group.use_norm && !tab.tariff.static_norm">
         <th>Общедомовые показания</th>
-        <td ng-class="(tab.by_volume == 1 ? 'nopad' : '')"><input type="number" class="form-control" ng-model="tab.volume" ng-show="!tab.tariff.static_norm"></td>
+        <td ng-class="(tab.by_volume == 1 ? 'nopad' : '')"><input ng-disabled="!is_last_month" type="number" class="form-control" ng-model="tab.volume" ng-show="!tab.tariff.static_norm"></td>
       </tr>
       <tr ng-show="tab.tariff_group.use_norm && tab.tariff.static_norm">
         <th>Норматив</th>
-        <td><input type="number" class="form-control" ng-model="tab.norm" ng-show="tab.tariff.static_norm"></td>
+        <td><input ng-disabled="!is_last_month" type="number" class="form-control" ng-model="tab.norm" ng-show="tab.tariff.static_norm"></td>
       </tr>
     </table>
     <table class="table table-condensed">
@@ -55,19 +55,19 @@
       <tr ng-repeat="apt in apts | object2Array | orderBy: 'number'">
         <td>{{apt.number}}</td>
         <td>{{apt.contractor}}</td>
-        <td><input ng-show="tab.tariff_group.use_norm" ng-model="apt.charges[tab.tariff_group_id].has_counter" type="checkbox"></td>
+        <td><input ng-disabled="!is_last_month" ng-show="tab.tariff_group.use_norm" ng-model="apt.charges[tab.tariff_group_id].has_counter" type="checkbox"></td>
         <td>{{apt.charges[tab.tariff_group_id].norm}}</td>
         <td>
-          <input ng-show="apt.charges[tab.tariff_group_id].has_counter" class="form-control" ng-model="apt.charges[tab.tariff_group_id].volume" smartFloat>
+          <input ng-disabled="!is_last_month" ng-show="apt.charges[tab.tariff_group_id].has_counter" class="form-control" ng-model="apt.charges[tab.tariff_group_id].volume" smartFloat>
           <span ng-show="!apt.charges[tab.tariff_group_id].has_counter">{{apt.charges[tab.tariff_group_id].volume}}</span>
         </td>
         <td>{{apt.charges[tab.tariff_group_id].value}}</td>
         <td>{{apt.charges[tab.tariff_group_id].reappraisal_auto}}</td>
-        <td><input type="number" class="form-control" ng-model="apt.charges[tab.tariff_group_id].reappraisal_manual"></td>
+        <td><input ng-disabled="!is_last_month" ng-type="number" class="form-control" ng-model="apt.charges[tab.tariff_group_id].reappraisal_manual"></td>
       </tr>
     </table>
-    <button class="btn btn-primary" ng-click="save(tab.tariff_group_id)">Сохранить</button>
-    <a class="btn btn-warning" ng-click="clearReappraisal()" href="">Удалить перерасчеты</a>
+    <button ng-show="is_last_month" class="btn btn-primary" ng-click="save(tab.tariff_group_id)">Сохранить</button>
+    <a ng-show="is_last_month" class="btn btn-warning" ng-click="clearReappraisal()" href="">Удалить перерасчеты</a>
     <a class="btn btn-default" href="#/charges">Вернуться к списку</a>
   </tab>
 </tabset>

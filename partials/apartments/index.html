@@ -1,6 +1,6 @@
 <h3 class="page-header">Список квартир по ул.{{building.street}} дом.{{building.number}}</h3>
 
-<a href="#/apartments/new/{{building._id}}" class="btn btn-primary">Создать</a>
+<a ng-show="is_last_month" href="#/apartments/new/{{building._id}}" class="btn btn-primary">Создать</a>
 <a class="btn btn-default" href="#/buildings">Вернуться к списку</a>
 
 <table class="table table-hover">
@@ -11,6 +11,7 @@
       <th>Площадь</th>
       <th>Площадь МОП</th>
       <th>Количество проживающих</th>
+      <th>Долг на период</th>
       <th>Действия</th>
     </tr>
   </thead>
@@ -21,9 +22,11 @@
       <td>{{apartment.space}}<span ng-show="apartment.new_space != null"> ({{apartment.new_space}})</span></td>
       <td>{{apartment.common_space}}<span ng-show="apartment.new_common_space != null"> ({{apartment.new_common_space}})</span></td>
       <td>{{apartment.residents}}<span ng-show="apartment.new_residents != null"> ({{apartment.new_residents}})</span></td>
-      <td>
-        <a class="btn" href="#/apartments/editchanges/{{apartment._id}}" tooltip-placement="top" tooltip="Изменить параметры для перерасчета"><span class="glyphicon glyphicon-time icon-lg"></span></a>
-        <a class="btn" href="#/apartments/edit/{{apartment._id}}" tooltip-placement="top" tooltip="Редактировать"><span class="glyphicon glyphicon-pencil icon-lg"></span></a>
+      <td>{{apartment.debt}}</td>
+      <td nowrap="nowrap">
+        <a href="#/apartments/editchanges/{{apartment._id}}" tooltip-placement="top" tooltip="Изменить параметры для перерасчета"><span class="glyphicon glyphicon-time icon-lg"></span></a>
+        <a ng-show="is_last_month"  href="" ng-click="act(apartment._id, apartment.number)" tooltip-placement="top" tooltip="Сверка за всё время"><span class="glyphicon glyphicon-list-alt icon-lg"></span></a>
+        <a ng-show="is_last_month"  href="#/apartments/edit/{{apartment._id}}" tooltip-placement="top" tooltip="Редактировать"><span class="glyphicon glyphicon-pencil icon-lg"></span></a>
       </td>
     </tr>
   </tbody>

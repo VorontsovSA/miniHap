@@ -26,6 +26,12 @@ var Period = new Schema({
   finished:            { type: Boolean, default: false }
 });
 
+var Options = new Schema({
+  quittance_line1:     String,
+  quittance_line2:     String,
+  quittance_line3:     String,
+  quittance_line4:     String
+});
 
 var TariffGroup = new Schema({
   name:                String,
@@ -66,6 +72,7 @@ var Apartment = new Schema({
   new_space:           { type: Number, default: null },
   new_common_space:    { type: Number, default: null },
   new_residents:       { type: Number, default: null },
+  debt:                { type: Number, default: 0 },
   _building:           { type: Schema.Types.ObjectId, ref: 'Building' },
   period:              Date
 });
@@ -84,12 +91,12 @@ var Charge = new Schema({
   value:               { type: Number, default: null },
   reappraisal_auto:    { type: Number, default: 0 },
   reappraisal_manual:  { type: Number, default: 0 },
-  debt:                { type: Number, default: 0 },
   _apartment:          { type: Schema.Types.ObjectId, ref: 'Apartment' },
   _tariff_group:       { type: Schema.Types.ObjectId, ref: 'TariffGroup' },
   period:              Date
 });
 
+var OptionsModel       = mongoose.model('Options', Options);
 var TariffGroupModel   = mongoose.model('TariffGroup', TariffGroup);
 var TariffModel        = mongoose.model('Tariff', Tariff);
 var BuildingModel      = mongoose.model('Building', Building);
@@ -97,6 +104,7 @@ var ApartmentModel     = mongoose.model('Apartment', Apartment);
 var PeriodModel        = mongoose.model('Period', Period);
 var ChargeModel        = mongoose.model('Charge', Charge);
 
+module.exports.OptionsModel      = OptionsModel;
 module.exports.TariffGroupModel  = TariffGroupModel;
 module.exports.TariffModel       = TariffModel;
 module.exports.BuildingModel     = BuildingModel;

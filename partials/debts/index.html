@@ -1,3 +1,34 @@
-<h3 class="page-header">Внесение показаний</h3>
+<h3 class="page-header">Внесение данных по задолженностям</h3>
 
-<p class="lead">Зугрузите файл с задолженностями</p>
+<div class="drop-container">
+  <div class="alert alert-info"><span>Перетащите файл с задолженностями<br><span class="btn">или нажмите, чтобы выбрать файл</span></span></div>
+  <input ng-model="file" ng-change="change(file)" type="file" />
+</div>
+
+<table ng-show="table" class="table table-striped">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>ФИО</th>
+      <th>Сумма</th>
+      <th>Адрес</th>
+      <th>Статус</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="(key, row) in table" ng-class="row[4]">
+      <td>{{key+1}}</td>
+      <td>{{row[0]}}</td>
+      <td>{{row[1]}}</td>
+      <td ng-switch on="row[2]" ng-class="(row[2] == 'loading') ? 'loading' : ''">
+        <div ng-switch-when="loading">
+        </div>
+        <div ng-switch-default>
+          {{row[2]}}
+        </div>
+      </td>
+      <td>{{row[3]}}</td>
+    </tr>
+  </tbody>
+</table>
+<button ng-show="is_last_month && table" ng-disabled="!ready2save" class="btn btn-primary" ng-click="save()">Сохранить</button>

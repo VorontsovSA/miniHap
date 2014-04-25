@@ -9,6 +9,12 @@ angular.module('phonecatServices', ['ngResource']).
   value('version', '0.1');
 
 angular.module('hap.services', ['ngResource']).
+  factory('Options', function($resource){
+    return $resource('http://localhost:1337/api/options/:id', {id: '@_id'}, {
+      get:    {method:'GET', isArray:false},
+      update: {method:'PUT', isArray:false}
+    });
+  }).
   factory('Building', function($resource){
     return $resource('http://localhost:1337/api/building/:id', {id: '@_id'}, {
       query:  {method:'GET', isArray:true},
@@ -45,6 +51,7 @@ angular.module('hap.services', ['ngResource']).
     return $resource('http://localhost:1337/api/period/:query_type/:id', {id: '@_id'}, {
       getCurrent: {method:'GET', params:{query_type:'current'}, isArray:false},
       getByDate:  {method:'GET', params:{query_type:'date'}, isArray:false},
+      getAll:     {method:'GET', params:{query_type:'all'}, isArray:true},
       query:      {method:'GET', params:{query_type:'many'}, isArray:true},
       get:        {method:'GET', params:{query_type:'one'}, isArray:false},
       save:       {method:'POST', params:{query_type:'one'}, isArray:false},

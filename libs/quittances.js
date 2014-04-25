@@ -1,22 +1,21 @@
 var $           = require ('jQuery');
 var fs          = require ('fs');
-var blobStream  = require ('blob-stream');
 var PDFDocument = require ('pdfkit');
 var margin = 100,
     font_size = 10,
     font_size_large = 12,
     global_margin = 30;
 
-function q_header(doc, apt) {
+function q_header(doc, apt, options) {
   doc.font('fonts/times.ttf');
   doc.fontSize(font_size);
-  doc.text('УФК по Приморскому краю (федеральное государственное казенное учреждение "2 отряд федеральной противопожарной службы по Приморскому краю)', margin);
+  doc.text(options.quittance_line1, margin);
   doc.moveDown();
-  doc.text('ИНН 2536047692     КПП 253601001     ОКТМО 05701000     БИК 040507001', margin);
-  doc.text('р/сч 40101810900000010002 в ГРКЦ ГУ Банка России по Приморскому краю г.Владивосток', margin);
+  doc.text(options.quittance_line2, margin);
+  doc.text(options.quittance_line3, margin);
   doc.font('fonts/timesbd.ttf');
   doc.fontSize(font_size_large);
-  doc.text('Код бюджетной классификации КБК: 177 113 0206101 7000 130', margin);
+  doc.text(options.quittance_line4, margin);
   doc.font('fonts/times.ttf');
   doc.fontSize(font_size);
   doc.moveDown();
@@ -90,12 +89,11 @@ function q_table(table, head, columns, footer, head_align, body_align, footer_al
   return doc;
 }
 
-function q_body(apt, is_first_page, doc) {
+function q_body(apt, is_first_page, options, doc) {
   if(!is_first_page) {
     doc.addPage();
   }
-  console.log(apt);
-  doc = q_header(doc, apt);
+  doc = q_header(doc, apt, options);
   doc.moveDown();
   doc.text('ОПЛАЧЕНО: _________________', 150);
   doc.moveDown();
@@ -116,11 +114,11 @@ function q_body(apt, is_first_page, doc) {
   var head_align = ['center', 'center'];
   var body_align = ['left', 'right'];
   var footer_align = [];
-  var size = [ 2, 3 ];
+  var size = [ 2, table.length ];
 
   doc = q_table(table, head, columns, footer, head_align, body_align, footer_align, size, doc);
   doc.font('fonts/timesbd.ttf');
-  doc.text('Сумма к оплате:', margin).moveUp().text((apt.total).toFixed(2), 180).moveUp().text('Общая задолженность:', 238).moveUp().text((apt.total + apt.total_debt).toFixed(2), 350, doc.y, {width: 72-6, align: 'right'});
+  doc.text('Начислено за месяц:', margin).moveUp().text((apt.total).toFixed(2), 200).moveUp().text('Итого к оплате:', 270).moveUp().text((apt.total + apt.total_debt >= 0) ? (apt.total + apt.total_debt).toFixed(2) : '0.00', 350, doc.y, {width: 72-6, align: 'right'});
   doc.moveDown();
   doc.font('fonts/times.ttf');
   doc.text('Дата платежа __________________  Подпись ____________', margin);
@@ -132,9 +130,8 @@ function q_body(apt, is_first_page, doc) {
      .stroke()
      .undash();
   doc.moveDown();
-  doc = q_header(doc, apt);
-  // doc.text('Сумма к оплате:', margin).moveUp().text('12000,00', 200);
-  // doc.moveDown();
+  doc = q_header(doc, apt, options);
+
   apt.executors.forEach(function(executor, key){
     doc.font('fonts/timesbi.ttf');
     doc.text( executor.name + ':', margin);
@@ -164,58 +161,25 @@ function q_body(apt, is_first_page, doc) {
     doc = q_table(table, head, columns, footer, head_align, body_align, footer_align, size, doc);
     doc.fontSize(10);
   });
-  // doc.font('fonts/timesbi.ttf');
-  // doc.text('Водоснабжение и водоотведение:', margin);
-  // doc.font('fonts/times.ttf');
-  // var table = [
-  //               [ 'Ремонт жилья', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00' ],
-  //               [ 'Ремонт жилья', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00' ],
-  //               [ 'Ремонт жилья', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00' ],
-  //               [ 'Ремонт жилья', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00' ],
-  //               [ 'Ремонт жилья', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00' ],
-  //               [ 'Содержание жилья', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00' ]
-  //             ];
-  // var head = [ 'Вид услуги', 'Норматив', 'Ед. изм. норматива', 'Объем', 'Ед. изм. объема', 'Тариф руб./ед.', 'Пере-расчеты', 'Итого к оплате'];
-  // var footer = [ 'Итого', ' ', ' ', ' ', ' ', ' ', ' ', '1300,12'];
-  // var columns = [ 100, 60, 55, 60, 45, 50, 50, 60 ];
-  // var head_align = ['center', 'center', 'center', 'center', 'center', 'center', 'center', 'center'];
-  // var body_align = ['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
-  // var footer_align = ['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
-  // var size = [ 8, 6 ];
-  // doc = q_table(table, head, columns, footer, head_align, body_align, footer_align, size, doc);
-  // doc.font('fonts/timesbi.ttf');
-  // doc.text('Дальэнерго:', margin);
-  // doc.font('fonts/times.ttf');
-  // var table = [
-  //               [ 'Содержание жилья', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00', '1000.00' ]
-  //             ];
-  // var head = [ 'Вид услуги', 'Норматив', 'Ед. изм. норматива', 'Объем', 'Ед. изм. объема', 'Тариф руб./ед.', 'Пере-расчеты', 'Итого к оплате'];
-  // var footer = [ 'Итого', ' ', ' ', ' ', ' ', ' ', ' ', '1300,12'];
-  // var columns = [ 100, 60, 55, 60, 45, 50, 50, 60 ];
-  // var head_align = ['center', 'center', 'center', 'center', 'center', 'center', 'center', 'center'];
-  // var body_align = ['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
-  // var footer_align = ['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
-  // var size = [ 8, 1 ];
-  // doc = q_table(table, head, columns, footer, head_align, body_align, footer_align, size, doc);
+
   doc.moveDown();
   doc.font('fonts/timesbd.ttf');
-  doc.text('Итого к оплате за месяц:', margin).moveUp().text((apt.total).toFixed(2), 455, doc.y, { width: 120, align: 'right' });
+  doc.text('Начислено за месяц:', margin).moveUp().text((apt.total).toFixed(2), 455, doc.y, { width: 120, align: 'right' });
   doc.text('Задолженность за коммунальные услуги:', margin).moveUp().text((apt.total_debt).toFixed(2), 455, doc.y, { width: 120, align: 'right' });
-  doc.text('Общая задолженность за коммунальные услуги:', margin).moveUp().text((apt.total + apt.total_debt).toFixed(2), 455, doc.y, { width: 120, align: 'right' });
+  doc.text('ИТОГО к оплате за коммунальные услуги:', margin).moveUp().text((apt.total + apt.total_debt >= 0) ? (apt.total + apt.total_debt).toFixed(2) : '0.00', 455, doc.y, { width: 120, align: 'right' });
   doc.moveDown();
   doc.font('fonts/times.ttf');
   doc.text('ОПЛАЧЕНО:__________ Дата платежа: ___________ Подпись: __________', margin);
   doc.text('ИЗВЕЩЕНИЕ', global_margin, 150);
   doc.text('КВИТАНЦИЯ', global_margin, 480);
   doc.lineWidth(1);
-  console.log(doc.page.height);
   doc.moveTo(margin - 3, global_margin)
      .lineTo(margin - 3, doc.page.height - global_margin)
      .stroke();
   return doc;
 }
 
-function generate (data) {
+function generate (data, notify_anchor) {
   //var stream = doc.pipe(blobStream());
   // stream.on('finish', function() {
   var default_filename = '(' + data.date + ')' + data.street + ' ' + data.number  + (data.description ? '(' + data.description + ')' : '') + '.pdf';
@@ -224,6 +188,7 @@ function generate (data) {
       .attr("nwsaveas", default_filename)
       .change(function() {
         console.log($(this).val());
+        var path = $(this).val();
         var doc = new PDFDocument({
             margins: {
               top: global_margin,
@@ -233,16 +198,32 @@ function generate (data) {
             }
         });
         var is_first_page = true;
-        doc.pipe(fs.createWriteStream($(this).val()));
+        fs.writeFile(path, data, 'binary', function(err){
+          if (err) {
+            console.log('your pdf canceled');
+            notify_anchor.notify("Не удалось сохранить файл квитанций по " + 'ул. ' + data.street + ' дом ' + data.number, {className: 'error'});
+            return err;
+          }
+          else
+          {
+            doc.pipe(fs.createWriteStream(path, function(err){
+                if (err) {
+                  console.log('your pdf canceled');
+                  notify_anchor.notify("Не удалось сохранить файл квитанций по " + 'ул. ' + data.street + ' дом ' + data.number, {className: 'error'});
+                }
+              })
+            );
 
-        // data['apts'].forEach(function(apt, key){
-        for(var key in data['apts']){
-          doc = q_body(data['apts'][key], is_first_page, doc);
-          is_first_page = false;
-        };
+            for(var key in data['apts']){
+              doc = q_body(data['apts'][key], is_first_page, data.options, doc);
+              is_first_page = false;
+            };
 
-        doc.end();
-        console.log('Document saved');
+            doc.end();
+            console.log('Document saved');
+            notify_anchor.notify("Файл квитанций по " + 'ул. ' + data.street + ' дом ' + data.number + " сохранен", 'success');
+          }
+        });
       })
       .click()
   ;

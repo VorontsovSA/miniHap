@@ -33,6 +33,7 @@ config(['$routeProvider', function($routeProvider) {
   $routeProvider.when('/reappraisals/selectperiod/:building_id', {templateUrl: 'partials/reappraisals/selectperiod.html', controller: 'ReappraisalsSelectPeriodCtrl'});
   $routeProvider.when('/reappraisals/building/:building_id/:period', {templateUrl: 'partials/reappraisals/building.html', controller: 'ReappraisalsBuildingCtrl'});
   $routeProvider.when('/debts', {templateUrl: 'partials/debts/index.html', controller: 'DebtsCtrl'});
+  $routeProvider.when('/options', {templateUrl: 'partials/options/edit.html', controller: 'OptionsCtrl'});
   $routeProvider.when('/', {templateUrl: 'partials/loading.html', controller: 'LoadingCtrl'});
   $routeProvider.otherwise({redirectTo: '/buildings'});
 }]).

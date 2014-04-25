@@ -49,7 +49,7 @@
         //call static method
         doc.pipe(fs.createWriteStream('file.pdf'));
         doc = q_header(doc);
-        
+
         doc.end();
         //handle the options initialization here
     }
