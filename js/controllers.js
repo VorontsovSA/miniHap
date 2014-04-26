@@ -158,6 +158,10 @@ hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', 
             }
           });
         });
+        if(!tariff_group_ids.length) {
+          $('.navbar').notify('Не привязан ни один тариф', 'error');
+        }
+        else
         $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_reappraisal/' + building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
         success(function(charges, status) {
           angular.forEach(charges, function(charge, key){
@@ -173,14 +177,15 @@ hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', 
             angular.forEach(data.apts, function(apt, aid){
               angular.forEach(apt.executors, function(executor, eid){
                 angular.forEach(executor.tariff_groups, function(tariff_group, tid){
-                  if(!tariff_group.charge || !tariff_group.charge.value) {
+                  if(!tariff_group.charge || tariff_group.charge.value == null) {
+                    console.log(tariff_group.charge);
                     ready2send = false;
                     $('.navbar').notify("Нет начисления по " + tariff_group.tariff_group.name + ' (' + apt.address + ')', 'error');
                   }
                 });
               });
             });
-            if(ready2send) require('./libs/quittances').generate(data, $('.navbar'));
+            if(ready2send) require('./libs/quittances').generate(data, $('.navbar'), localStorage);
           });
         }).
         error(function(data, status) {
@@ -236,7 +241,7 @@ hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', 
             data.apts[apartment_ids.indexOf(charge._apartment)].tariff_groups[tariff_group_ids.indexOf(charge._tariff_group)] = (charge.value + charge.reappraisal_auto + charge.reappraisal_manual).toFixed(2);
           })
           console.log(data);
-          require('./libs/excel-report').generateSaldo(data, $('.navbar'));
+          require('./libs/excel-report').generateSaldo(data, $('.navbar'), localStorage);
         }).
         error(function(data, status) {
           console.log("Request failed");
@@ -336,7 +341,7 @@ hapControllers.controller('ApartmentsCtrl', ['$scope', '$rootScope', '$routePara
             data.body[period_map.indexOf(moment(charge.period).format('MM.YYYY'))][tariff_group_map.indexOf(charge._tariff_group) + 1] = (charge.value + charge.reappraisal_auto + charge.reappraisal_manual).toFixed(2);
           })
           console.log(data);
-          require('./libs/excel-report').generateAct(data, $('.navbar'));
+          require('./libs/excel-report').generateAct(data, $('.navbar'), localStorage);
         });
       });
     }).
@@ -718,19 +723,21 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
     $scope.data = data || "Request failed";
     $scope.status = status;
   });
-  $scope.save = function(tariff_group_id) {
+  $scope.save = function() {
     console.log('Saving tariff_group');
     // console.log(tariff_group_id);
     var charges = [];
     angular.forEach($scope.apts, function(apt, key){
-      charges.push({
-        _id:                 apt.charges[tariff_group_id]._id,
-        has_counter:         apt.charges[tariff_group_id].has_counter,
-        norm:                apt.charges[tariff_group_id].norm,
-        volume:              apt.charges[tariff_group_id].volume,
-        value:               apt.charges[tariff_group_id].value,
-        reappraisal_auto:    apt.charges[tariff_group_id].reappraisal_auto,
-        reappraisal_manual:  apt.charges[tariff_group_id].reappraisal_manual
+      angular.forEach(apt.charges, function(charge, tariff_group_id){
+        charges.push({
+          _id:                 charge._id,
+          has_counter:         charge.has_counter,
+          norm:                charge.norm,
+          volume:              charge.volume,
+          value:               charge.value,
+          reappraisal_auto:    charge.reappraisal_auto,
+          reappraisal_manual:  charge.reappraisal_manual
+        });
       });
     });
     // console.log(charges);
@@ -1016,6 +1023,7 @@ hapControllers.controller('ReappraisalsBuildingCtrl', ['$scope', '$rootScope', '
 
 hapControllers.controller('DebtsCtrl', ['$rootScope', '$scope', '$http', function($rootScope, $scope, $http) {
   $scope.file = null;
+  $scope.default_dir = (localStorage.default_dir) ? localStorage.default_dir : '';
   $scope.ready2save = false;
   $scope.change = function(file) {
     $scope.ready2save = false;

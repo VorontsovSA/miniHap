@@ -3,16 +3,18 @@ var fs = require('fs');
 
 var excelbuilder = require('msexcel-builder');
 
-function generateSaldo (data, notify_anchor) {
+function generateSaldo (data, notify_anchor, localStorage) {
   var default_filename = '(' + data.date + ')' + data.street + ' ' + data.number  + (data.description ? '(' + data.description + ')' : '') + '.xlsx';
   $("#template-save-file-dialog")
     .clone()
       .attr("nwsaveas", default_filename)
+      .attr("nwworkingdir", (localStorage.default_dir) ? localStorage.default_dir : '')
       .change(function() {
         console.log($(this).val());
-        console.log(default_filename.replace(/^.*[\\\/]/, ''));
-        var filename = default_filename.replace(/^.*[\\\/]/, '');
-        var workbook = excelbuilder.createWorkbook(default_filename.slice(0, default_filename.length - filename.length), filename);
+        console.log($(this).val().replace(/^.*[\\\/]/, ''));
+        var filename = $(this).val().replace(/^.*[\\\/]/, '');
+        localStorage.default_dir = $(this).val().slice(0, $(this).val().length - filename.length);
+        var workbook = excelbuilder.createWorkbook($(this).val().slice(0, $(this).val().length - filename.length), filename);
 
         // Create a new worksheet with 10 columns and 12 rows
         var sheet = workbook.createSheet('Ведомость', data.head.length + 3, data.apts.length + 4);
@@ -91,16 +93,18 @@ function generateSaldo (data, notify_anchor) {
   ;
 }
 
-function generateAct (data, notify_anchor) {
+function generateAct (data, notify_anchor, localStorage) {
   var default_filename = 'Сверка ' + data.street + ' ' + data.number + '-' + data.apt_number  + (data.description ? '(' + data.description + ')' : '') + '.xlsx';
   $("#template-save-file-dialog")
     .clone()
       .attr("nwsaveas", default_filename)
+      .attr("nwworkingdir", (localStorage.default_dir) ? localStorage.default_dir : '')
       .change(function() {
         console.log($(this).val());
-        console.log(default_filename.replace(/^.*[\\\/]/, ''));
-        var filename = default_filename.replace(/^.*[\\\/]/, '');
-        var workbook = excelbuilder.createWorkbook(default_filename.slice(0, default_filename.length - filename.length), filename);
+        console.log($(this).val().replace(/^.*[\\\/]/, ''));
+        var filename = $(this).val().replace(/^.*[\\\/]/, '');
+        localStorage.default_dir = $(this).val().slice(0, $(this).val().length - filename.length);
+        var workbook = excelbuilder.createWorkbook($(this).val().slice(0, $(this).val().length - filename.length), filename);
 
         // Create a new worksheet with 10 columns and 12 rows
         var sheet = workbook.createSheet('Сверка ', data.head.length, data.body.length + 1);

@@ -66,8 +66,8 @@
         <td><input ng-disabled="!is_last_month" ng-type="number" class="form-control" ng-model="apt.charges[tab.tariff_group_id].reappraisal_manual"></td>
       </tr>
     </table>
-    <button ng-show="is_last_month" class="btn btn-primary" ng-click="save(tab.tariff_group_id)">Сохранить</button>
-    <a ng-show="is_last_month" class="btn btn-warning" ng-click="clearReappraisal()" href="">Удалить перерасчеты</a>
-    <a class="btn btn-default" href="#/charges">Вернуться к списку</a>
   </tab>
 </tabset>
+<button ng-show="is_last_month" class="btn btn-primary" ng-click="save()">Сохранить</button>
+<a ng-show="is_last_month" class="btn btn-warning" ng-click="clearReappraisal()" href="">Удалить перерасчеты</a>
+<a class="btn btn-default" href="#/charges">Вернуться к списку</a>

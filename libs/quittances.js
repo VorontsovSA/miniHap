@@ -106,7 +106,7 @@ function q_body(apt, is_first_page, options, doc) {
   });
   table.push([
     'Задолженность за коммунальные услуги',
-    apt.total_debt,
+    (apt.total_debt).toFixed(2),
   ]);
   var head = [ 'Вид услуги', 'Сумма'];
   var footer = [];
@@ -179,15 +179,18 @@ function q_body(apt, is_first_page, options, doc) {
   return doc;
 }
 
-function generate (data, notify_anchor) {
+function generate (data, notify_anchor, localStorage) {
   //var stream = doc.pipe(blobStream());
   // stream.on('finish', function() {
   var default_filename = '(' + data.date + ')' + data.street + ' ' + data.number  + (data.description ? '(' + data.description + ')' : '') + '.pdf';
   $("#template-save-file-dialog")
     .clone()
       .attr("nwsaveas", default_filename)
+      .attr("nwworkingdir", (localStorage.default_dir) ? localStorage.default_dir : '')
       .change(function() {
         console.log($(this).val());
+        var filename = $(this).val().replace(/^.*[\\\/]/, '');
+        localStorage.default_dir = $(this).val().slice(0, $(this).val().length - filename.length);
         var path = $(this).val();
         var doc = new PDFDocument({
             margins: {

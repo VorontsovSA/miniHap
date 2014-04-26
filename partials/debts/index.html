@@ -2,7 +2,7 @@
 
 <div class="drop-container">
   <div class="alert alert-info"><span>Перетащите файл с задолженностями<br><span class="btn">или нажмите, чтобы выбрать файл</span></span></div>
-  <input ng-model="file" ng-change="change(file)" type="file" />
+  <input ng-model="file" ng-change="change(file)" type="file" nwworkingdir="{{default_dir}}" />
 </div>
 
 <table ng-show="table" class="table table-striped">
