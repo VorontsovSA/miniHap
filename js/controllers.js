@@ -19,7 +19,7 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Peri
     $rootScope.period_next = Period.getByDate({ 'date': date_next.format()}, function (period) {
       if(period.date) $rootScope.is_last_month = false;
     });
-    // $location.path('/buildings');
+    $location.path('/buildings');
   });
   console.log($rootScope.current_period);
   $scope.previousMonth = function() {

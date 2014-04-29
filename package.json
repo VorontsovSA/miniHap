@@ -1,14 +1,15 @@
 {
-  "name": "nwevents",
-  "version": "0.0.0",
-  "description": "",
+  "name": "miniHap",
+  "version": "1.0.0",
+  "description": "Программное средство для управления начислениями коммунальных платежей и выставления счетов на оплату коммунальных платежей жилых помещений",
   "main": "index.html",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Vorontsov S.A.",
   "window": {
-    "toolbar": true,
+    "toolbar": false,
+    "icon": "favicon.png",
     "width": 1250,
     "height": 600
   }
