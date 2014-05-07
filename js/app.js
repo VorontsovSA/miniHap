@@ -42,5 +42,6 @@ run(['$window', function($window) { // instance-injector
   // You can have as many of these as you want.
   // You can only inject instances (not Providers)
   // into run blocks
+  var win = require('nw.gui').Window.get().maximize();
   $window.moment.lang('ru');
 }]);
