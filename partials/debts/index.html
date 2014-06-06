@@ -30,5 +30,6 @@
       <td>{{row[3]}}</td>
     </tr>
   </tbody>
-</table>
+</table><br>
+<button ng-show="(is_last_month && table) || file" class="btn btn-default" ng-click="change(file)">Обновить</button>&nbsp;
 <button ng-show="is_last_month && table" ng-disabled="!ready2save" class="btn btn-primary" ng-click="save()">Сохранить</button>
