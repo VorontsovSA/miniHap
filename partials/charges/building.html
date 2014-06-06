@@ -50,6 +50,7 @@
           <th>Начисление</th>
           <th>Перерасчет автоматический</th>
           <th>Перерасчет ручной</th>
+          <th>Тариф</th>
         </tr>
       </thead>
       <tr ng-repeat="apt in apts | object2Array | orderBy: 'number'">
@@ -58,12 +59,17 @@
         <td><input ng-disabled="!is_last_month" ng-show="tab.tariff_group.use_norm" ng-model="apt.charges[tab.tariff_group_id].has_counter" type="checkbox"></td>
         <td>{{apt.charges[tab.tariff_group_id].norm}}</td>
         <td>
-          <input ng-disabled="!is_last_month" ng-show="apt.charges[tab.tariff_group_id].has_counter" class="form-control" ng-model="apt.charges[tab.tariff_group_id].volume" smartFloat>
+          <input ng-disabled="!is_last_month" type="number" ng-show="apt.charges[tab.tariff_group_id].has_counter" class="form-control" ng-model="apt.charges[tab.tariff_group_id].volume" smartFloat>
           <span ng-show="!apt.charges[tab.tariff_group_id].has_counter">{{apt.charges[tab.tariff_group_id].volume}}</span>
         </td>
         <td>{{apt.charges[tab.tariff_group_id].value}}</td>
         <td>{{apt.charges[tab.tariff_group_id].reappraisal_auto}}</td>
-        <td><input ng-disabled="!is_last_month" ng-type="number" class="form-control" ng-model="apt.charges[tab.tariff_group_id].reappraisal_manual"></td>
+        <td><input ng-disabled="!is_last_month" type="number" class="form-control" ng-model="apt.charges[tab.tariff_group_id].reappraisal_manual"></td>
+        <td>
+          <select ng-model="apt.charges[tab.tariff_group_id]._tariff" ng-options="tariff._id as tariff.number+' ('+tariff.rate+')' for (key , tariff) in tariffs[tab.tariff_group_id]" class="form-control">
+            <option value="">---</option>
+          </select>
+        </td>
       </tr>
     </table>
   </tab>

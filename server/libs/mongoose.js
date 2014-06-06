@@ -93,6 +93,7 @@ var Charge = new Schema({
   reappraisal_manual:  { type: Number, default: 0 },
   _apartment:          { type: Schema.Types.ObjectId, ref: 'Apartment' },
   _tariff_group:       { type: Schema.Types.ObjectId, ref: 'TariffGroup' },
+  _tariff:             { type: Schema.Types.ObjectId, ref: 'Tariff', default: null },
   period:              Date
 });
 

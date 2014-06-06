@@ -89,7 +89,7 @@ function q_table(table, head, columns, footer, head_align, body_align, footer_al
   return doc;
 }
 
-function q_body(apt, is_first_page, options, doc) {
+function q_body(apt, is_first_page, options, tariffs, doc) {
   if(!is_first_page) {
     doc.addPage();
   }
@@ -144,7 +144,7 @@ function q_body(apt, is_first_page, options, doc) {
         executor.tariff_groups[prop].tariff_group.norm_dimension,
         executor.tariff_groups[prop].charge.volume,
         executor.tariff_groups[prop].tariff_group.value_dimension,
-        executor.tariff_groups[prop].tariff.rate,
+        (executor.tariff_groups[prop].charge._tariff) ? tariffs[executor.tariff_groups[prop].charge._tariff].rate : executor.tariff_groups[prop].tariff.rate,
         (executor.tariff_groups[prop].charge.value).toFixed(2),
         (executor.tariff_groups[prop].charge.reappraisal_auto + executor.tariff_groups[prop].charge.reappraisal_manual).toFixed(2),
         (executor.tariff_groups[prop].charge.reappraisal_auto + executor.tariff_groups[prop].charge.reappraisal_manual + executor.tariff_groups[prop].charge.value).toFixed(2)
@@ -218,7 +218,7 @@ function generate (data, notify_anchor, localStorage) {
             );
 
             for(var key in data['apts']){
-              doc = q_body(data['apts'][key], is_first_page, data.options, doc);
+              doc = q_body(data['apts'][key], is_first_page, data.options, data.tariffs, doc);
               is_first_page = false;
             };
 

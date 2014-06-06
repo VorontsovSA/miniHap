@@ -125,6 +125,7 @@ app.get('/api/charges_for_building/:id/:tariff_groups/:period', function(req, re
               reappraisal_manual:  0,
               _apartment:          id,
               _tariff_group:       tariff_group_id,
+              _tariff:             null,
               period:              req.params.period
             });
           });
@@ -237,7 +238,8 @@ app.post('/api/save_charges_for_building', function(req, res) {
       gotcharge.value =              charge.value;
       gotcharge.reappraisal_auto =   charge.reappraisal_auto;
       gotcharge.reappraisal_manual = charge.reappraisal_manual;
-
+      gotcharge._tariff =            (charge._tariff) ? charge._tariff : null;
+      console.log(gotcharge);
       return gotcharge.save(function (err) {
           if (!err) {
               log.info("charge updated");
@@ -264,7 +266,7 @@ app.post('/api/save_charges_for_building', function(req, res) {
   }
   saveCharge(charges);
 });
-// Saving charges
+// Saving charges reappraisal
 app.post('/api/save_reappraisal_for_building', function(req, res) {
   var charges = req.body.charges;
   console.log(charges);
@@ -371,8 +373,14 @@ app.get('/api/new_period/:from/:to', function(req, res) {
           if (!err) {
             if (!charges.length && apts.length)
               return cloneApartment(apts);
-            else
-              cloneCharges(charges, apts, apartment._id);
+            else {
+              if(charges.length)
+                cloneCharges(charges, apts, apartment._id);
+              else {
+                console.log("Apartment without charges");
+                return;
+              }
+            }
           } else {
             res.statusCode = 500;
             log.error('Internal error(%d): %s',res.statusCode,err.message);
@@ -405,6 +413,7 @@ app.get('/api/new_period/:from/:to', function(req, res) {
           reappraisal_manual:  0,
           _apartment:          aid,
           _tariff_group:       charge._tariff_group,
+          _tariff:             charge._tariff,
           period:              req.params.to
     });
 
@@ -429,7 +438,7 @@ app.get('/api/new_period/:from/:to', function(req, res) {
   ApartmentModel.find({'period' : req.params.from }).sort('number').exec(function (err, apartments) {
     if (!err) {
       console.log("DDDD")
-      cloneApartment(apartments);
+      if(apartments.length)cloneApartment(apartments);
     } else {
       res.statusCode = 500;
       log.error('Internal error(%d): %s',res.statusCode,err.message);
@@ -480,7 +489,7 @@ app.post('/api/clear_reappraisal', function(req, res) {
 // Find apt by name
 app.post('/api/find_apt', function(req, res) {
   console.log(req);
-  var contractor = req.body.name.split(' ');
+  var contractor = req.body.name.toString().split(' ');
   ApartmentModel.findOne({ 'contractor.last_name' : contractor[0], 'contractor.first_name' : contractor[1], 'contractor.second_name' : contractor[2], 'period' : req.body.period })
   .populate('_building')
   .exec(function (err, apartment) {
@@ -861,18 +870,31 @@ app.delete('/api/tariff_group/:id', function (req, res){
     return TariffGroupModel.findById(req.params.id, function (err, tariff_group) {
         if(!tariff_group) {
             res.statusCode = 404;
-            return res.send({ error: 'Not found' });
+            return res.send({ status: 'FAIL', error: 'Not found' });
         }
-        return tariff_group.remove(function (err) {
+        TariffModel.find({ '_tariff_group' : req.params.id }).exec(function (err, tariffs) {
+          if (!err) {
+            if(tariffs.length) {
+              res.statusCode = 500;
+              return res.send({ status: 'BUSY', error: 'Tariff group used in some objects' });
+            }
+          } else {
+            res.statusCode = 500;
+            log.error('Internal error(%d): %s',res.statusCode,err.message);
+            return res.send({ status: 'FAIL', error: 'Find tariffs server error' });
+          }
+          return tariff_group.remove(function (err) {
             if (!err) {
                 log.info("tariff_group removed");
                 return res.send({ status: 'OK' });
             } else {
                 res.statusCode = 500;
                 log.error('Internal error(%d): %s',res.statusCode,err.message);
-                return res.send({ error: 'Server error' });
+                return res.send({ status: 'FAIL', error: 'Server error' });
             }
+          });
         });
+        // TODO: If busy send return res.send({ status: 'BUSY', error: 'Tariff group used in some objects' });
     });
 });
 
@@ -972,17 +994,42 @@ app.delete('/api/tariff/:id', function (req, res){
     return TariffModel.findById(req.params.id, function (err, tariff) {
         if(!tariff) {
             res.statusCode = 404;
-            return res.send({ error: 'Not found' });
+            return res.send({ status: 'FAIL', error: 'Not found' });
         }
-        return tariff.remove(function (err) {
-            if (!err) {
-                log.info("tariff removed");
-                return res.send({ status: 'OK' });
-            } else {
-                res.statusCode = 500;
-                log.error('Internal error(%d): %s',res.statusCode,err.message);
-                return res.send({ error: 'Server error' });
+        // TODO: If busy send return res.send({ status: 'BUSY', error: 'Tariff used in some objects' });
+        BuildingModel.find({ 'tariffs' : req.params.id }).exec(function (err, buildings) {
+          if (!err) {
+            if(buildings.length) {
+              res.statusCode = 500;
+              return res.send({ status: 'BUSY', error: 'Tariff used in buildings' });
             }
+          } else {
+            res.statusCode = 500;
+            log.error('Internal error(%d): %s',res.statusCode,err.message);
+            return res.send({ status: 'FAIL', error: 'Find buildings server error' });
+          }
+          ChargeModel.find({ '_tariff' : req.params.id }).exec(function (err, charges) {
+            if (!err) {
+              if(charges.length) {
+                res.statusCode = 500;
+                return res.send({ status: 'BUSY', error: 'Tariff used in charges' });
+              }
+            } else {
+              res.statusCode = 500;
+              log.error('Internal error(%d): %s',res.statusCode,err.message);
+              return res.send({ status: 'FAIL', error: 'Find charges server error' });
+            }
+            return tariff.remove(function (err) {
+              if (!err) {
+                  log.info("tariff removed");
+                  return res.send({ status: 'OK' });
+              } else {
+                  res.statusCode = 500;
+                  log.error('Internal error(%d): %s',res.statusCode,err.message);
+                  return res.send({ error: 'Server error' });
+              }
+            });
+          });
         });
     });
 });

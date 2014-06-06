@@ -16,7 +16,7 @@
           <th>Сумма к перерасчету</th>
         </tr>
       </thead>
-      <tr ng-repeat="(aid, apt) in apts">
+      <tr ng-repeat="(aid, apt) in apts | object2Array | orderBy: 'number'">
         <td>{{apt.number}}</td>
         <td>{{apt.contractor}}</td>
         <td>{{apt.charges[tab.tariff_group_id].value}}</td>
