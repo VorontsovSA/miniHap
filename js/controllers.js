@@ -102,99 +102,105 @@ hapControllers.controller('NavCtrl', ['$scope', '$rootScope', '$location', 'Peri
 //#######    Buildings   ##########
 //#################################
 
-hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', '$http', 'Apartment', 'moment', 'Options',
-  function($scope, $rootScope, Building, $http, Apartment, moment, Options) {
+hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', '$http', 'Apartment', 'moment', 'Options', 'Tariff',
+  function($scope, $rootScope, Building, $http, Apartment, moment, Options, Tariff) {
   $scope.buildings = Building.query();
 
   $scope.quittances = function (building_id) {
-    $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + building_id}).
-    success(function(building_data, status) {
-      var date = moment($rootScope.current_period.date).format('MMMM YYYY');
-      var data = {
-        options     : null,
-        street      : building_data.street,
-        number      : building_data.number,
-        description : building_data.description,
-        date        : moment($rootScope.current_period.date).format('YYYY.MM'),
-        apts: {}
-      };
-      var tariff_group_ids = [];
-      var tariff_groups = {};
-      var tariff_group_executor = {};
-      var executors = [];
-      angular.forEach(building_data.tariffs, function(tariff, key){
-        console.log(tariff._tariff_group.executor);
-        if(executors.indexOf(tariff._tariff_group.executor) == -1) executors.push(tariff._tariff_group.executor);
-        tariff_group_executor[tariff._tariff_group._id] = executors.indexOf(tariff._tariff_group.executor);
-        tariff_group_ids.push(tariff._tariff_group._id);
-      });
-      var apartments = Apartment.query({building_id: building_id, period: $rootScope.current_period.date}, function(apartments)
-      {
-        angular.forEach(apartments, function(apt, key){
-          data.apts[apt._id] = {
-            address      : 'ул. ' + building_data.street + ', д. ' + building_data.number + ', к. ' + apt.number,
-            number       : apt.number,
-            contractor   : apt.contractor.last_name + ' ' + apt.contractor.first_name + ' ' + apt.contractor.second_name,
-            residents    : apt.residents,
-            space        : apt.space,
-            common_space : apt.common_space,
-            date         : date,
-            total        : 0,
-            total_debt   : apt.debt,
-            executors: []
-          };
-          angular.forEach(building_data.tariffs, function(tariff, key){
-            data.apts[apt._id].executors[executors.indexOf(tariff._tariff_group.executor)] = {
-              name: tariff._tariff_group.executor,
-              total: 0,
-              tariff_groups: {}
-            }
-          });
-          angular.forEach(building_data.tariffs, function(tariff, key){
-            data.apts[apt._id].executors[executors.indexOf(tariff._tariff_group.executor)].tariff_groups[tariff._tariff_group._id] = {
-              tariff_group: tariff._tariff_group,
-              tariff: tariff,
-              charge: null
-            }
-          });
+    var tariffs = Tariff.query(function() {
+      $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + building_id}).
+      success(function(building_data, status) {
+        var date = moment($rootScope.current_period.date).format('MMMM YYYY');
+        var data = {
+          options     : null,
+          tariffs     : {},
+          street      : building_data.street,
+          number      : building_data.number,
+          description : building_data.description,
+          date        : moment($rootScope.current_period.date).format('YYYY.MM'),
+          apts        : {}
+        };
+        angular.forEach(tariffs, function(tariff, key){
+          data.tariffs[tariff._id] = tariff;
         });
-        if(!tariff_group_ids.length) {
-          $('.navbar').notify('Не привязан ни один тариф', 'error');
-        }
-        else
-        $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_reappraisal/' + building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
-        success(function(charges, status) {
-          angular.forEach(charges, function(charge, key){
-            data.apts[charge._apartment].executors[tariff_group_executor[charge._tariff_group]].tariff_groups[charge._tariff_group].charge = charge;
-            data.apts[charge._apartment].total += charge.value + charge.reappraisal_auto + charge.reappraisal_manual;
-            // data.apts[charge._apartment].total_debt += charge.debt;
-            data.apts[charge._apartment].executors[tariff_group_executor[charge._tariff_group]].total += charge.value + charge.reappraisal_auto + charge.reappraisal_manual;
-          })
-          Options.get(function(options){
-            data.options = options;
-            console.log(data);
-            var ready2send = true;
-            angular.forEach(data.apts, function(apt, aid){
-              angular.forEach(apt.executors, function(executor, eid){
-                angular.forEach(executor.tariff_groups, function(tariff_group, tid){
-                  if(!tariff_group.charge || tariff_group.charge.value == null) {
-                    console.log(tariff_group.charge);
-                    ready2send = false;
-                    $('.navbar').notify("Нет начисления по " + tariff_group.tariff_group.name + ' (' + apt.address + ')', 'error');
-                  }
+        var tariff_group_ids = [];
+        var tariff_groups = {};
+        var tariff_group_executor = {};
+        var executors = [];
+        angular.forEach(building_data.tariffs, function(tariff, key){
+          console.log(tariff._tariff_group.executor);
+          if(executors.indexOf(tariff._tariff_group.executor) == -1) executors.push(tariff._tariff_group.executor);
+          tariff_group_executor[tariff._tariff_group._id] = executors.indexOf(tariff._tariff_group.executor);
+          tariff_group_ids.push(tariff._tariff_group._id);
+        });
+        var apartments = Apartment.query({building_id: building_id, period: $rootScope.current_period.date}, function(apartments)
+        {
+          angular.forEach(apartments, function(apt, key){
+            data.apts[apt._id] = {
+              address      : 'ул. ' + building_data.street + ', д. ' + building_data.number + ', к. ' + apt.number,
+              number       : apt.number,
+              contractor   : apt.contractor.last_name + ' ' + apt.contractor.first_name + ' ' + apt.contractor.second_name,
+              residents    : apt.residents,
+              space        : apt.space,
+              common_space : apt.common_space,
+              date         : date,
+              total        : 0,
+              total_debt   : apt.debt,
+              executors: []
+            };
+            angular.forEach(building_data.tariffs, function(tariff, key){
+              data.apts[apt._id].executors[executors.indexOf(tariff._tariff_group.executor)] = {
+                name: tariff._tariff_group.executor,
+                total: 0,
+                tariff_groups: {}
+              }
+            });
+            angular.forEach(building_data.tariffs, function(tariff, key){
+              data.apts[apt._id].executors[executors.indexOf(tariff._tariff_group.executor)].tariff_groups[tariff._tariff_group._id] = {
+                tariff_group: tariff._tariff_group,
+                tariff: tariff,
+                charge: null
+              }
+            });
+          });
+          if(!tariff_group_ids.length) {
+            $('.navbar').notify('Не привязан ни один тариф', 'error');
+          }
+          else
+          $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_reappraisal/' + building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
+          success(function(charges, status) {
+            angular.forEach(charges, function(charge, key){
+              data.apts[charge._apartment].executors[tariff_group_executor[charge._tariff_group]].tariff_groups[charge._tariff_group].charge = charge;
+              data.apts[charge._apartment].total += charge.value + charge.reappraisal_auto + charge.reappraisal_manual;
+              // data.apts[charge._apartment].total_debt += charge.debt;
+              data.apts[charge._apartment].executors[tariff_group_executor[charge._tariff_group]].total += charge.value + charge.reappraisal_auto + charge.reappraisal_manual;
+            })
+            Options.get(function(options){
+              data.options = options;
+              console.log(data);
+              var ready2send = true;
+              angular.forEach(data.apts, function(apt, aid){
+                angular.forEach(apt.executors, function(executor, eid){
+                  angular.forEach(executor.tariff_groups, function(tariff_group, tid){
+                    if(!tariff_group.charge || tariff_group.charge.value == null) {
+                      console.log(tariff_group.charge);
+                      ready2send = false;
+                      $('.navbar').notify("Нет начисления по " + tariff_group.tariff_group.name + ' (' + apt.address + ')', 'error');
+                    }
+                  });
                 });
               });
+              if(ready2send) require('./libs/quittances').generate(data, $('.navbar'), localStorage);
             });
-            if(ready2send) require('./libs/quittances').generate(data, $('.navbar'), localStorage);
+          }).
+          error(function(data, status) {
+            console.log("Request failed");
           });
-        }).
-        error(function(data, status) {
-          console.log("Request failed");
         });
+      }).
+      error(function(data, status) {
+        console.log("Request failed");
       });
-    }).
-    error(function(data, status) {
-      console.log("Request failed");
     });
   }
 
@@ -427,10 +433,18 @@ hapControllers.controller('TariffGroupsEditCtrl', ['$scope', '$routeParams', '$l
   $scope.delete = function() {
     var dlg = $dialogs.confirm('Внимание','Действительно хотите удалить группу тарифов и все связанные объекты?');
     dlg.result.then(function(btn){
-      $scope.tariff_group.$delete(function() {
-        $('.navbar').notify("Группа тарифов удалена", 'success');
-        $location.path('/tariffGroups');
-      });
+      $scope.tariff_group.$delete(function(res) {
+          $('.navbar').notify("Группа тарифов удалена", 'success');
+          $location.path('/tariffGroups');
+        }, function(res) {
+          if(res.data.status == "BUSY") {
+            $('.navbar').notify("Невозможно удалить. Группа тарифов используется.", 'error');
+          }
+          if(res.data.status == "FAIL") {
+            $('.navbar').notify("Ошибка при попытке удалить", 'error');
+          }
+        }
+      );
     },function(btn){
       //$scope.confirmed = 'Shame on you for not thinking this is awesome!';
     });
@@ -498,10 +512,18 @@ hapControllers.controller('TariffsEditCtrl', ['$scope', '$routeParams', '$locati
   $scope.delete = function() {
     var dlg = $dialogs.confirm('Внимание','Действительно хотите удалить тариф?');
     dlg.result.then(function(btn){
-      $scope.tariff.$delete(function() {
-        $('.navbar').notify("Тариф удален", 'success');
-        $location.path('/tariffs');
-      });
+      $scope.tariff.$delete(function(res) {
+          $('.navbar').notify("Тариф удален", 'success');
+          $location.path('/tariffs');
+        }, function(res) {
+          if(res.data.status == "BUSY") {
+            $('.navbar').notify("Невозможно удалить. Тариф используется.", 'error');
+          }
+          if(res.data.status == "FAIL") {
+            $('.navbar').notify("Ошибка при попытке удалить", 'error');
+          }
+        }
+      );
     },function(btn){
       //$scope.confirmed = 'Shame on you for not thinking this is awesome!';
     });
@@ -524,204 +546,243 @@ hapControllers.controller('ChargesCtrl', ['$scope', 'Building', function($scope,
   $scope.buildings = Building.query();
 }]);
 
-hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$routeParams', '$location', 'Building', 'Apartment', '$http', '$dialogs',
-  function($scope, $rootScope, $routeParams, $location, Building, Apartment, $http, $dialogs) {
+hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$routeParams', '$location', 'Building', 'Apartment', '$http', '$dialogs', 'Tariff',
+  function($scope, $rootScope, $routeParams, $location, Building, Apartment, $http, $dialogs, Tariff) {
   $scope.building = Building.get({id: $routeParams.building_id});
 
-  $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + $routeParams.building_id}).
-  success(function(data, status) {
-    var tariff_group_ids = [];
-    angular.forEach(data.tariffs, function(tariff, key){
-      tariff_group_ids.push(tariff._tariff_group._id);
-    });
-    console.log(data);
-    var apartments = Apartment.query({building_id: $routeParams.building_id, period: $rootScope.current_period.date}, function(apartments)
-    {
-      $scope.apts         = {};
-      $scope.residents    = 0;
-      $scope.space        = 0;
-      $scope.common_space = 0;
-      angular.forEach(apartments, function(apt, key){
-      // apartments.forEach(function(apt) {
-        // console.log(apt.number);
-        $scope.apts[apt._id] = {
-          number: apt.number,
-          contractor: apt.contractor.last_name + ' ' + apt.contractor.first_name + ' ' + apt.contractor.second_name,
-          residents    : apt.residents,
-          space        : apt.space,
-          common_space : apt.common_space,
-          charges: {}
-        };
-        $scope.residents    += apt.residents;
-        $scope.space        += apt.space;
-        $scope.common_space += apt.common_space;
+  var tariffs = Tariff.query(function() {
+    $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + $routeParams.building_id}).
+    success(function(data, status) {
+      var tariff_group_ids = [];
+      $scope.tariffs = {};
+      angular.forEach(data.tariffs, function(tariff, key){
+        tariff_group_ids.push(tariff._tariff_group._id);
+        $scope.tariffs[tariff._tariff_group._id] = {};
+        angular.forEach(tariffs, function(global_tariff, key){
+          if(global_tariff._tariff_group._id == tariff._tariff_group._id)
+          {
+            $scope.tariffs[tariff._tariff_group._id][global_tariff._id] = (global_tariff);
+          }
+        });
       });
-      // console.log('apts');
-      // console.log($scope.apts);
-      $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_building/' + $routeParams.building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
-      success(function(charges, status) {
-        // console.log('STARTED');
-        console.log(charges);
-        var total_volume = {};
-        var total_norm = {};
-        angular.forEach(charges, function(charge, key){
-        // charges.forEach(function(charge) {
-          // console.log(charge);
-          // console.log($scope.apts);
-          $scope.apts[charge._apartment].charges[charge._tariff_group] = {
-            _id:                 charge._id,
-            has_counter:         charge.has_counter,
-            norm:                charge.norm,
-            volume:              charge.volume,
-            value:               charge.value,
-            reappraisal_auto:    charge.reappraisal_auto,
-            reappraisal_manual:  charge.reappraisal_manual
+      console.log($scope.tariffs);
+      var apartments = Apartment.query({building_id: $routeParams.building_id, period: $rootScope.current_period.date}, function(apartments)
+      {
+        $scope.apts         = {};
+        $scope.residents    = 0;
+        $scope.space        = 0;
+        $scope.common_space = 0;
+        angular.forEach(apartments, function(apt, key){
+        // apartments.forEach(function(apt) {
+          // console.log(apt.number);
+          $scope.apts[apt._id] = {
+            number: apt.number,
+            contractor: apt.contractor.last_name + ' ' + apt.contractor.first_name + ' ' + apt.contractor.second_name,
+            residents    : apt.residents,
+            space        : apt.space,
+            common_space : apt.common_space,
+            charges: {}
           };
-          if(!charge.has_counter && charge.norm != null)
-            total_norm[charge._tariff_group] = Number(charge.norm);
-
-          if(total_volume[charge._tariff_group])
-            total_volume[charge._tariff_group] += Number(charge.volume);
-          else
-            total_volume[charge._tariff_group] = Number(charge.volume);
-        })
-        // console.log('total_volume');
-        // console.log(total_volume);
+          $scope.residents    += apt.residents;
+          $scope.space        += apt.space;
+          $scope.common_space += apt.common_space;
+        });
+        // console.log('apts');
         // console.log($scope.apts);
-        // console.log('FINISHED');
-        $scope.tabs = {};
-        angular.forEach(data.tariffs, function(tariff, key){
-          var calc_var = 0;
-          if(tariff._tariff_group.use_residents) calc_var    += $scope.residents;
-          if(tariff._tariff_group.use_space) calc_var        += $scope.space;
-          if(tariff._tariff_group.use_common_space) calc_var += $scope.common_space;
-          $scope.tabs[tariff._tariff_group._id] = {
-            title: tariff._tariff_group.name,
-            tariff_group: tariff._tariff_group,
-            tariff_group_id: tariff._tariff_group._id,
-            tariff: tariff,
-            by_volume: true,
-            volume: total_volume[tariff._tariff_group._id],
-            norm: (total_norm[tariff._tariff_group._id]) ? total_norm[tariff._tariff_group._id] : 0,
-            calc_var: calc_var
-          };
-
-          console.log('tab');
-          console.log($scope.tabs[tariff._tariff_group._id]);
-          console.log($scope.tabs[tariff._tariff_group._id].tariff.static_norm);
-          // Wathing common trigger
-          var updateCharges = function() {
+        $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_building/' + $routeParams.building_id + '/' + tariff_group_ids + '/' + $rootScope.current_period.date}).
+        success(function(charges, status) {
+          // console.log('STARTED');
+          console.log(charges);
+          var total_volume = {};
+          var total_norm = {};
+          angular.forEach(charges, function(charge, key){
+          // charges.forEach(function(charge) {
+            // console.log(charge);
             // console.log($scope.apts);
-            if(!tariff._tariff_group.use_norm) {
-              console.log('Not Use norm');
-              angular.forEach($scope.apts, function(apt, key){
-                var calc_var = 0;
-                if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
-                if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
-                if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
-                $scope.apts[key].charges[tariff._tariff_group._id].has_counter = false;
-                $scope.apts[key].charges[tariff._tariff_group._id].norm = '';
-                $scope.apts[key].charges[tariff._tariff_group._id].volume = (calc_var).toFixed(4);
-                $scope.apts[key].charges[tariff._tariff_group._id].value = ($scope.apts[key].charges[tariff._tariff_group._id].volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
-              });
-            }
+            $scope.apts[charge._apartment].charges[charge._tariff_group] = {
+              _id:                 charge._id,
+              has_counter:         charge.has_counter,
+              norm:                charge.norm,
+              volume:              charge.volume,
+              value:               charge.value,
+              reappraisal_auto:    charge.reappraisal_auto,
+              reappraisal_manual:  charge.reappraisal_manual,
+              _tariff:             (charge._tariff) ? charge._tariff : ""
+            };
+            if(!charge.has_counter && charge.norm != null)
+              total_norm[charge._tariff_group] = Number(charge.norm);
+
+            if(total_volume[charge._tariff_group])
+              total_volume[charge._tariff_group] += Number(charge.volume);
             else
-            {
-              console.log('Use norm');
-              if(!$scope.tabs[tariff._tariff_group._id].tariff.static_norm) {
-                // console.log('Update charges for volume');
-                var max_value = null;
-                var max_key   = null;
-                var real_sum  = 0;
-                var to_share  = $scope.tabs[tariff._tariff_group._id].volume;
-                var calc_var  = $scope.tabs[tariff._tariff_group._id].calc_var;
-                angular.forEach($scope.apts, function(apt, key){
-                  if(apt.charges[tariff._tariff_group._id].has_counter)
-                  {
-                    to_share -= apt.charges[tariff._tariff_group._id].volume;
-                    if(tariff._tariff_group.use_residents) calc_var    -= $scope.apts[key].residents;
-                    if(tariff._tariff_group.use_space) calc_var        -= $scope.apts[key].space;
-                    if(tariff._tariff_group.use_common_space) calc_var -= $scope.apts[key].common_space;
-                  }
-                });
-                var norm = (to_share/calc_var).toFixed(4);
+              total_volume[charge._tariff_group] = Number(charge.volume);
+          })
+          // console.log('total_volume');
+          // console.log(total_volume);
+          console.log($scope.apts);
+          // console.log('FINISHED');
+          $scope.tabs = {};
+          angular.forEach(data.tariffs, function(tariff, key){
+            var calc_var = 0;
+            if(tariff._tariff_group.use_residents) calc_var    += $scope.residents;
+            if(tariff._tariff_group.use_space) calc_var        += $scope.space;
+            if(tariff._tariff_group.use_common_space) calc_var += $scope.common_space;
+            $scope.tabs[tariff._tariff_group._id] = {
+              title: tariff._tariff_group.name,
+              tariff_group: tariff._tariff_group,
+              tariff_group_id: tariff._tariff_group._id,
+              tariff: tariff,
+              by_volume: true,
+              volume: total_volume[tariff._tariff_group._id],
+              norm: (total_norm[tariff._tariff_group._id]) ? total_norm[tariff._tariff_group._id] : 0,
+              calc_var: calc_var
+            };
+
+            console.log('tab');
+            console.log($scope.tabs[tariff._tariff_group._id]);
+            console.log($scope.tabs[tariff._tariff_group._id].tariff.static_norm);
+            // Wathing common trigger
+            var updateCharges = function() {
+              // console.log($scope.apts);
+              if(!tariff._tariff_group.use_norm) {
+                console.log('Not Use norm');
                 angular.forEach($scope.apts, function(apt, key){
                   var calc_var = 0;
                   if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
                   if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
                   if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
-                  $scope.apts[key].charges[tariff._tariff_group._id].norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : norm;
-                  if(!apt.charges[tariff._tariff_group._id].has_counter) $scope.apts[key].charges[tariff._tariff_group._id].volume = (norm * calc_var).toFixed(4);
-                  if(!apt.charges[tariff._tariff_group._id].has_counter && ($scope.apts[key].charges[tariff._tariff_group._id].volume > max_value || max_value == null))
-                  {
-                    max_value = $scope.apts[key].charges[tariff._tariff_group._id].volume;
-                    max_key   = key;
-                  }
-                  real_sum += Number($scope.apts[key].charges[tariff._tariff_group._id].volume);
-                  $scope.apts[key].charges[tariff._tariff_group._id].value = ($scope.apts[key].charges[tariff._tariff_group._id].volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
+                  $scope.apts[key].charges[tariff._tariff_group._id].has_counter = false;
+                  $scope.apts[key].charges[tariff._tariff_group._id].norm = '';
+                  $scope.apts[key].charges[tariff._tariff_group._id].volume = (calc_var).toFixed(4);
+                  $scope.apts[key].charges[tariff._tariff_group._id].value =
+                    ($scope.apts[key].charges[tariff._tariff_group._id].volume *
+                      (($scope.apts[key].charges[tariff._tariff_group._id]._tariff)
+                        ? $scope.tariffs[tariff._tariff_group._id][$scope.apts[key].charges[tariff._tariff_group._id]._tariff].rate
+                        : $scope.tabs[tariff._tariff_group._id].tariff.rate
+                      )
+                    ).toFixed(2);
                 });
-                if (real_sum != $scope.tabs[tariff._tariff_group._id].volume) {
-                  // console.log($scope.tabs[tariff._tariff_group._id].volume);
-                  // console.log(real_sum);
-                  // console.log(max_key);
-                  // console.log('Repaired float error ' + ($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4) + ' for ' + $scope.apts[max_key].number);
-                  $scope.apts[max_key].charges[tariff._tariff_group._id].volume = (Number($scope.apts[max_key].charges[tariff._tariff_group._id].volume) + Number(($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4))).toFixed(4);
-                  $scope.apts[max_key].charges[tariff._tariff_group._id].value = ($scope.apts[max_key].charges[tariff._tariff_group._id].volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
-                };
               }
               else
               {
-                angular.forEach($scope.apts, function(apt, key){
-                  var calc_var = 0;
-                  if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
-                  if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
-                  if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
-                  $scope.apts[key].charges[tariff._tariff_group._id].norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : $scope.tabs[tariff._tariff_group._id].norm;
-                  if(!apt.charges[tariff._tariff_group._id].has_counter)$scope.apts[key].charges[tariff._tariff_group._id].volume = ($scope.tabs[tariff._tariff_group._id].norm * calc_var).toFixed(4);
-                  $scope.apts[key].charges[tariff._tariff_group._id].value = ($scope.apts[key].charges[tariff._tariff_group._id].volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
-                });
+                console.log('Use norm');
+                if(!$scope.tabs[tariff._tariff_group._id].tariff.static_norm) {
+                  // console.log('Update charges for volume');
+                  var max_value = null;
+                  var max_key   = null;
+                  var real_sum  = 0;
+                  var to_share  = $scope.tabs[tariff._tariff_group._id].volume;
+                  var calc_var  = $scope.tabs[tariff._tariff_group._id].calc_var;
+                  angular.forEach($scope.apts, function(apt, key){
+                    if(apt.charges[tariff._tariff_group._id].has_counter)
+                    {
+                      to_share -= apt.charges[tariff._tariff_group._id].volume;
+                      if(tariff._tariff_group.use_residents) calc_var    -= $scope.apts[key].residents;
+                      if(tariff._tariff_group.use_space) calc_var        -= $scope.apts[key].space;
+                      if(tariff._tariff_group.use_common_space) calc_var -= $scope.apts[key].common_space;
+                    }
+                  });
+                  var norm = (to_share/calc_var).toFixed(4);
+                  angular.forEach($scope.apts, function(apt, key){
+                    var calc_var = 0;
+                    if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
+                    if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
+                    if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
+                    $scope.apts[key].charges[tariff._tariff_group._id].norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : norm;
+                    if(!apt.charges[tariff._tariff_group._id].has_counter) $scope.apts[key].charges[tariff._tariff_group._id].volume = (norm * calc_var).toFixed(4);
+                    if(!apt.charges[tariff._tariff_group._id].has_counter && ($scope.apts[key].charges[tariff._tariff_group._id].volume > max_value || max_value == null))
+                    {
+                      max_value = $scope.apts[key].charges[tariff._tariff_group._id].volume;
+                      max_key   = key;
+                    }
+                    real_sum += Number($scope.apts[key].charges[tariff._tariff_group._id].volume);
+                    $scope.apts[key].charges[tariff._tariff_group._id].value =
+                      ($scope.apts[key].charges[tariff._tariff_group._id].volume *
+                        (($scope.apts[key].charges[tariff._tariff_group._id]._tariff)
+                          ? $scope.tariffs[tariff._tariff_group._id][$scope.apts[key].charges[tariff._tariff_group._id]._tariff].rate
+                          : $scope.tabs[tariff._tariff_group._id].tariff.rate
+                        )
+                      ).toFixed(2);
+                  });
+                  if (real_sum != $scope.tabs[tariff._tariff_group._id].volume) {
+                    // console.log($scope.tabs[tariff._tariff_group._id].volume);
+                    // console.log(real_sum);
+                    // console.log(max_key);
+                    // console.log('Repaired float error ' + ($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4) + ' for ' + $scope.apts[max_key].number);
+                    $scope.apts[max_key].charges[tariff._tariff_group._id].volume = (Number($scope.apts[max_key].charges[tariff._tariff_group._id].volume) + Number(($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4))).toFixed(4);
+                    $scope.apts[max_key].charges[tariff._tariff_group._id].value =
+                      ($scope.apts[max_key].charges[tariff._tariff_group._id].volume *
+                        (($scope.apts[max_key].charges[tariff._tariff_group._id]._tariff)
+                          ? $scope.tariffs[tariff._tariff_group._id][$scope.apts[max_key].charges[tariff._tariff_group._id]._tariff].rate
+                          : $scope.tabs[tariff._tariff_group._id].tariff.rate
+                        )
+                      ).toFixed(2);
+                  };
+                }
+                else
+                {
+                  angular.forEach($scope.apts, function(apt, key){
+                    var calc_var = 0;
+                    if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
+                    if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
+                    if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
+                    $scope.apts[key].charges[tariff._tariff_group._id].norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : $scope.tabs[tariff._tariff_group._id].norm;
+                    if(!apt.charges[tariff._tariff_group._id].has_counter)$scope.apts[key].charges[tariff._tariff_group._id].volume = ($scope.tabs[tariff._tariff_group._id].norm * calc_var).toFixed(4);
+                    $scope.apts[key].charges[tariff._tariff_group._id].value =
+                      ($scope.apts[key].charges[tariff._tariff_group._id].volume *
+                        (($scope.apts[key].charges[tariff._tariff_group._id]._tariff)
+                          ? $scope.tariffs[tariff._tariff_group._id][$scope.apts[key].charges[tariff._tariff_group._id]._tariff].rate
+                          : $scope.tabs[tariff._tariff_group._id].tariff.rate
+                        )
+                      ).toFixed(2);
+                  });
+                }
               }
-            }
-          };
-          // updateCharges();
-          $scope.$watch("tabs['" + tariff._tariff_group._id + "'].by_volume", function( newValue ) {
-            // console.log( "$watch : " + newValue );
-            updateCharges();
-          });
-          // Wathing common volume
-          $scope.$watch("tabs['" + tariff._tariff_group._id + "'].volume", function( newValue ) {
-            console.log('Update charges for volume field');
-            // console.log( "$watch : " + newValue );
-            updateCharges();
-          });
-          // Watching common norm
-          $scope.$watch("tabs['" + tariff._tariff_group._id + "'].norm", function( newValue ) {
-            console.log('Update charges for norm field');
-            // console.log( "$watch : " + newValue );
-            updateCharges();
-          });
-          // Watching apts
-          angular.forEach($scope.apts, function(apt, key){
-            $scope.$watch("apts['" + key +"'].charges['" + tariff._tariff_group._id + "'].has_counter", function( newValue ) {
+            };
+            // updateCharges();
+            $scope.$watch("tabs['" + tariff._tariff_group._id + "'].by_volume", function( newValue ) {
               // console.log( "$watch : " + newValue );
               updateCharges();
             });
-            $scope.$watch("apts['" + key +"'].charges['" + tariff._tariff_group._id + "'].volume", function( newValue ) {
+            // Wathing common volume
+            $scope.$watch("tabs['" + tariff._tariff_group._id + "'].volume", function( newValue ) {
+              console.log('Update charges for volume field');
               // console.log( "$watch : " + newValue );
               updateCharges();
             });
+            // Watching common norm
+            $scope.$watch("tabs['" + tariff._tariff_group._id + "'].norm", function( newValue ) {
+              console.log('Update charges for norm field');
+              // console.log( "$watch : " + newValue );
+              updateCharges();
+            });
+            // Watching apts
+            angular.forEach($scope.apts, function(apt, key){
+              $scope.$watch("apts['" + key +"'].charges['" + tariff._tariff_group._id + "'].has_counter", function( newValue ) {
+                // console.log( "$watch : " + newValue );
+                updateCharges();
+              });
+              $scope.$watch("apts['" + key +"'].charges['" + tariff._tariff_group._id + "'].volume", function( newValue ) {
+                // console.log( "$watch : " + newValue );
+                updateCharges();
+              });
+              $scope.$watch("apts['" + key +"'].charges['" + tariff._tariff_group._id + "']._tariff", function( newValue ) {
+                // console.log( "$watch : " + newValue );
+                updateCharges();
+              });
+            });
           });
+        }).
+        error(function(data, status) {
+          $scope.data = data || "Request failed";
+          $scope.status = status;
         });
-      }).
-      error(function(data, status) {
-        $scope.data = data || "Request failed";
-        $scope.status = status;
       });
+    }).
+    error(function(data, status) {
+      $scope.data = data || "Request failed";
+      $scope.status = status;
     });
-  }).
-  error(function(data, status) {
-    $scope.data = data || "Request failed";
-    $scope.status = status;
   });
   $scope.save = function() {
     console.log('Saving tariff_group');
@@ -736,7 +797,8 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
           volume:              charge.volume,
           value:               charge.value,
           reappraisal_auto:    charge.reappraisal_auto,
-          reappraisal_manual:  charge.reappraisal_manual
+          reappraisal_manual:  charge.reappraisal_manual,
+          _tariff:             charge._tariff
         });
       });
     });
@@ -798,195 +860,316 @@ hapControllers.controller('ReappraisalsSelectPeriodCtrl', ['$routeParams', '$sco
   }
 }]);
 
-hapControllers.controller('ReappraisalsBuildingCtrl', ['$scope', '$rootScope', '$routeParams', '$location', 'Building', 'Apartment', '$http',
-  function($scope, $rootScope, $routeParams, $location, Building, Apartment, $http) {
+hapControllers.controller('ReappraisalsBuildingCtrl', ['$scope', '$rootScope', '$routeParams', '$location', 'Building', 'Apartment', '$http', 'Tariff',
+  function($scope, $rootScope, $routeParams, $location, Building, Apartment, $http, Tariff) {
   $scope.date = $routeParams.period;
   $scope.building = Building.get({id: $routeParams.building_id});
 
-  $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + $routeParams.building_id}).
-  success(function(data, status) {
-    var tariff_group_ids = [];
-    angular.forEach(data.tariffs, function(tariff, key){
-      tariff_group_ids.push(tariff._tariff_group._id);
-    });
-    // console.log(data);
-    var apartments = Apartment.query({building_id: $routeParams.building_id, period: $scope.date}, function(apartments)
-    {
-      console.log(apartments);
-      $scope.apts         = {};
-      $scope.residents    = 0;
-      $scope.space        = 0;
-      $scope.common_space = 0;
-      apartments.forEach(function(apt) {
-        $scope.apts[apt._id] = {
-          number: apt.number,
-          contractor: apt.contractor.last_name + ' ' + apt.contractor.first_name + ' ' + apt.contractor.second_name,
-          residents    : (apt.new_residents != null) ? apt.new_residents : apt.residents,
-          space        : (apt.new_space != null) ? apt.new_space : apt.space,
-          common_space : (apt.new_common_space != null) ? apt.new_common_space : apt.common_space,
-          charges: {}
-        };
-        $scope.residents    += (apt.new_residents != null) ? apt.new_residents : apt.residents;
-        $scope.space        += (apt.new_space != null) ? apt.new_space : apt.space;
-        $scope.common_space += (apt.new_common_space != null) ? apt.new_common_space : apt.common_space;
+  var tariffs = Tariff.query(function() {
+    $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + $routeParams.building_id}).
+    success(function(data, status) {
+      var tariff_group_ids = [];
+      $scope.tariffs = {};
+      angular.forEach(data.tariffs, function(tariff, key){
+        tariff_group_ids.push(tariff._tariff_group._id);
+        $scope.tariffs[tariff._tariff_group._id] = {};
+        angular.forEach(tariffs, function(global_tariff, key){
+          if(global_tariff._tariff_group._id == tariff._tariff_group._id)
+          {
+            $scope.tariffs[tariff._tariff_group._id][global_tariff._id] = (global_tariff);
+          }
+        });
       });
-      // console.log('apts');
-      console.log($scope.apts);
-      $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_reappraisal/' + $routeParams.building_id + '/' + tariff_group_ids + '/' + $scope.date}).
-      success(function(charges, status) {
-        // console.log('STARTED');
-        var total_volume = {};
-        charges.forEach(function(charge) {
-          console.log(charge);
-          // console.log($scope.apts);
-          $scope.apts[charge._apartment].charges[charge._tariff_group] = {
-            _id:                 charge._id,
-            has_counter:         charge.has_counter,
-            norm:                charge.norm,
-            volume:              charge.volume,
-            value:               charge.value,
-            reappraisal_auto:    charge.reappraisal_auto,
-            reappraisal_manual:  charge.reappraisal_manual,
-            new_norm:            charge.new_norm,
-            new_volume:          charge.new_volume,
-            new_value:           charge.new_value,
+      // console.log(data);
+      var apartments = Apartment.query({building_id: $routeParams.building_id, period: $scope.date}, function(apartments)
+      {
+        console.log(apartments);
+        $scope.apts         = {};
+        $scope.residents    = 0;
+        $scope.space        = 0;
+        $scope.common_space = 0;
+        apartments.forEach(function(apt) {
+          $scope.apts[apt._id] = {
+            number: apt.number,
+            contractor: apt.contractor.last_name + ' ' + apt.contractor.first_name + ' ' + apt.contractor.second_name,
+            residents    : (apt.new_residents != null) ? apt.new_residents : apt.residents,
+            space        : (apt.new_space != null) ? apt.new_space : apt.space,
+            common_space : (apt.new_common_space != null) ? apt.new_common_space : apt.common_space,
+            charges: {}
           };
-          if(total_volume[charge._tariff_group])
-            total_volume[charge._tariff_group] += Number(charge.volume);
-          else
-            total_volume[charge._tariff_group] = Number(charge.volume);
-        })
-        console.log('total_volume');
-        console.log(total_volume);
-        // console.log($scope.apts);
-        // console.log('FINISHED');
-        $scope.tabs = {};
-        angular.forEach(data.tariffs, function(tariff, key){
-          var calc_var = 0;
-          if(tariff._tariff_group.use_residents) calc_var    += $scope.residents;
-          if(tariff._tariff_group.use_space) calc_var        += $scope.space;
-          if(tariff._tariff_group.use_common_space) calc_var += $scope.common_space;
-          $scope.tabs[tariff._tariff_group._id] = {
-            title: tariff._tariff_group.name,
-            tariff_group: tariff._tariff_group,
-            tariff_group_id: tariff._tariff_group._id,
-            tariff: tariff,
-            by_volume: true,
-            volume: total_volume[tariff._tariff_group._id],
-            norm: 0,
-            calc_var: calc_var
-          };
-          // console.log('tab');
-          // console.log($scope.tabs[tariff._tariff_group._id]);
-          // console.log($scope.tabs[tariff._tariff_group._id]);
-          // Wathing common trigger
-          var updateCharges = function() {
-            if(!tariff._tariff_group.use_norm) {
-              console.log('Not Use norm');
-              angular.forEach($scope.apts, function(apt, key){
-                var calc_var = 0;
-                if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
-                if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
-                if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
-                // $scope.apts[key].charges[tariff._tariff_group._id].has_counter = false;
-                $scope.apts[key].charges[tariff._tariff_group._id].new_norm         = '';
-                $scope.apts[key].charges[tariff._tariff_group._id].new_volume       = (calc_var).toFixed(4);
-                $scope.apts[key].charges[tariff._tariff_group._id].new_value        = ($scope.apts[key].charges[tariff._tariff_group._id].new_volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
-                $scope.apts[key].charges[tariff._tariff_group._id].reappraisal_auto = ($scope.apts[key].charges[tariff._tariff_group._id].new_value - $scope.apts[key].charges[tariff._tariff_group._id].value).toFixed(2);
-              });
-            }
+          $scope.residents    += (apt.new_residents != null) ? apt.new_residents : apt.residents;
+          $scope.space        += (apt.new_space != null) ? apt.new_space : apt.space;
+          $scope.common_space += (apt.new_common_space != null) ? apt.new_common_space : apt.common_space;
+        });
+        // console.log('apts');
+        console.log($scope.apts);
+        $http({method: 'GET', url: 'http://localhost:1337/api/charges_for_reappraisal/' + $routeParams.building_id + '/' + tariff_group_ids + '/' + $scope.date}).
+        success(function(charges, status) {
+          // console.log('STARTED');
+          var total_volume = {};
+          var total_norm = {};
+          charges.forEach(function(charge) {
+            console.log(charge);
+            // console.log($scope.apts);
+            $scope.apts[charge._apartment].charges[charge._tariff_group] = {
+              _id:                 charge._id,
+              has_counter:         charge.has_counter,
+              norm:                charge.norm,
+              volume:              charge.volume,
+              value:               charge.value,
+              reappraisal_auto:    charge.reappraisal_auto,
+              reappraisal_manual:  charge.reappraisal_manual,
+              _tariff:             (charge._tariff) ? charge._tariff : "",
+              new_norm:            charge.new_norm,
+              new_volume:          charge.new_volume,
+              new_value:           charge.new_value,
+            };
+            if(!charge.has_counter && charge.norm != null)
+              total_norm[charge._tariff_group] = Number(charge.norm);
+
+            if(total_volume[charge._tariff_group])
+              total_volume[charge._tariff_group] += Number(charge.volume);
             else
-            {
-              console.log('Use norm');
-              if($scope.tabs[tariff._tariff_group._id].by_volume == 1) {
-                // console.log('Update charges for volume');
-                var max_value = null;
-                var max_key   = null;
-                var real_sum  = 0;
-                var to_share  = $scope.tabs[tariff._tariff_group._id].volume;
-                var calc_var  = $scope.tabs[tariff._tariff_group._id].calc_var;
-                // console.log('new to_share = ' + to_share);
-                angular.forEach($scope.apts, function(apt, key){
-                  if(apt.charges[tariff._tariff_group._id].has_counter)
-                  {
-                    to_share -= apt.charges[tariff._tariff_group._id].volume;
-                    if(tariff._tariff_group.use_residents) calc_var    -= $scope.apts[key].residents;
-                    if(tariff._tariff_group.use_space) calc_var        -= $scope.apts[key].space;
-                    if(tariff._tariff_group.use_common_space) calc_var -= $scope.apts[key].common_space;
-                  }
-                });
-                var norm = (to_share/calc_var).toFixed(4);
-                // console.log('new to_share = ' + to_share);
-                // console.log('new calc_var = ' + calc_var);
-                // console.log('new norm = ' + norm);
+              total_volume[charge._tariff_group] = Number(charge.volume);
+          })
+          console.log('total_volume');
+          console.log(total_volume);
+          // console.log($scope.apts);
+          // console.log('FINISHED');
+          $scope.tabs = {};
+          angular.forEach(data.tariffs, function(tariff, key){
+            var calc_var = 0;
+            if(tariff._tariff_group.use_residents) calc_var    += $scope.residents;
+            if(tariff._tariff_group.use_space) calc_var        += $scope.space;
+            if(tariff._tariff_group.use_common_space) calc_var += $scope.common_space;
+            $scope.tabs[tariff._tariff_group._id] = {
+              title: tariff._tariff_group.name,
+              tariff_group: tariff._tariff_group,
+              tariff_group_id: tariff._tariff_group._id,
+              tariff: tariff,
+              by_volume: true,
+              volume: total_volume[tariff._tariff_group._id],
+              norm: (total_norm[tariff._tariff_group._id]) ? total_norm[tariff._tariff_group._id] : 0,
+              calc_var: calc_var
+            };
+            // console.log('tab');
+            // console.log($scope.tabs[tariff._tariff_group._id]);
+            // console.log($scope.tabs[tariff._tariff_group._id]);
+            // Wathing common trigger
+            /*var updateCharges = function() {
+              if(!tariff._tariff_group.use_norm) {
+                console.log('Not Use norm');
                 angular.forEach($scope.apts, function(apt, key){
                   var calc_var = 0;
                   if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
                   if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
                   if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
-                  // console.log('new calc_var = ' + calc_var);
-                  $scope.apts[key].charges[tariff._tariff_group._id].new_norm   = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : norm;
-                  $scope.apts[key].charges[tariff._tariff_group._id].new_volume = (!apt.charges[tariff._tariff_group._id].has_counter) ? (norm * calc_var).toFixed(4) : $scope.apts[key].charges[tariff._tariff_group._id].volume;
-                  if(!apt.charges[tariff._tariff_group._id].has_counter && ($scope.apts[key].charges[tariff._tariff_group._id].new_volume > max_value || max_value == null))
-                  {
-                    max_value = $scope.apts[key].charges[tariff._tariff_group._id].new_volume;
-                    max_key   = key;
-                  }
-                  real_sum += Number($scope.apts[key].charges[tariff._tariff_group._id].new_volume);
-                  $scope.apts[key].charges[tariff._tariff_group._id].new_value = ($scope.apts[key].charges[tariff._tariff_group._id].new_volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
-                  // console.log('new new_value = ' + $scope.apts[key].charges[tariff._tariff_group._id].new_volume);
+                  // $scope.apts[key].charges[tariff._tariff_group._id].has_counter = false;
+                  $scope.apts[key].charges[tariff._tariff_group._id].new_norm         = '';
+                  $scope.apts[key].charges[tariff._tariff_group._id].new_volume       = (calc_var).toFixed(4);
+                  $scope.apts[key].charges[tariff._tariff_group._id].new_value        = ($scope.apts[key].charges[tariff._tariff_group._id].new_volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
                   $scope.apts[key].charges[tariff._tariff_group._id].reappraisal_auto = ($scope.apts[key].charges[tariff._tariff_group._id].new_value - $scope.apts[key].charges[tariff._tariff_group._id].value).toFixed(2);
                 });
-                if (real_sum != $scope.tabs[tariff._tariff_group._id].volume) {
-                  // console.log($scope.tabs[tariff._tariff_group._id].volume);
-                  // console.log(real_sum);
-                  // console.log(max_key);
-                  // console.log('Repaired float error ' + ($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4) + ' for ' + $scope.apts[max_key].number);
-                  $scope.apts[max_key].charges[tariff._tariff_group._id].new_volume       = (Number($scope.apts[max_key].charges[tariff._tariff_group._id].new_volume) + Number(($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4))).toFixed(4);
-                  $scope.apts[max_key].charges[tariff._tariff_group._id].new_value        = ($scope.apts[max_key].charges[tariff._tariff_group._id].new_volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
-                  $scope.apts[max_key].charges[tariff._tariff_group._id].reappraisal_auto = ($scope.apts[max_key].charges[tariff._tariff_group._id].new_value - $scope.apts[max_key].charges[tariff._tariff_group._id].value).toFixed(2);
-                };
               }
-            }
-          };
-          // updateCharges();
-          $scope.$watch("tabs['" + tariff._tariff_group._id + "'].by_volume", function( newValue ) {
-            // console.log( "$watch : " + newValue );
-            updateCharges();
-          });
-          // Wathing common volume
-          $scope.$watch("tabs['" + tariff._tariff_group._id + "'].volume", function( newValue ) {
-            console.log('Update charges for volume field');
-            // console.log( "$watch : " + newValue );
-            updateCharges();
-          });
-          // Watching common norm
-          $scope.$watch("tabs['" + tariff._tariff_group._id + "'].norm", function( newValue ) {
-            // console.log( "$watch : " + newValue );
-            updateCharges();
-          });
-          // Watching apts
-          angular.forEach($scope.apts, function(apt, key){
-            $scope.$watch("apts['" + key +"'].charges['" + tariff._tariff_group._id + "'].has_counter", function( newValue ) {
+              else
+              {
+                console.log('Use norm');
+                if($scope.tabs[tariff._tariff_group._id].by_volume == 1) {
+                  // console.log('Update charges for volume');
+                  var max_value = null;
+                  var max_key   = null;
+                  var real_sum  = 0;
+                  var to_share  = $scope.tabs[tariff._tariff_group._id].volume;
+                  var calc_var  = $scope.tabs[tariff._tariff_group._id].calc_var;
+                  // console.log('new to_share = ' + to_share);
+                  angular.forEach($scope.apts, function(apt, key){
+                    if(apt.charges[tariff._tariff_group._id].has_counter)
+                    {
+                      to_share -= apt.charges[tariff._tariff_group._id].volume;
+                      if(tariff._tariff_group.use_residents) calc_var    -= $scope.apts[key].residents;
+                      if(tariff._tariff_group.use_space) calc_var        -= $scope.apts[key].space;
+                      if(tariff._tariff_group.use_common_space) calc_var -= $scope.apts[key].common_space;
+                    }
+                  });
+                  var norm = (to_share/calc_var).toFixed(4);
+                  // console.log('new to_share = ' + to_share);
+                  // console.log('new calc_var = ' + calc_var);
+                  // console.log('new norm = ' + norm);
+                  angular.forEach($scope.apts, function(apt, key){
+                    var calc_var = 0;
+                    if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
+                    if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
+                    if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
+                    // console.log('new calc_var = ' + calc_var);
+                    $scope.apts[key].charges[tariff._tariff_group._id].new_norm   = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : norm;
+                    $scope.apts[key].charges[tariff._tariff_group._id].new_volume = (!apt.charges[tariff._tariff_group._id].has_counter) ? (norm * calc_var).toFixed(4) : $scope.apts[key].charges[tariff._tariff_group._id].volume;
+                    if(!apt.charges[tariff._tariff_group._id].has_counter && ($scope.apts[key].charges[tariff._tariff_group._id].new_volume > max_value || max_value == null))
+                    {
+                      max_value = $scope.apts[key].charges[tariff._tariff_group._id].new_volume;
+                      max_key   = key;
+                    }
+                    real_sum += Number($scope.apts[key].charges[tariff._tariff_group._id].new_volume);
+                    $scope.apts[key].charges[tariff._tariff_group._id].new_value = ($scope.apts[key].charges[tariff._tariff_group._id].new_volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
+                    // console.log('new new_value = ' + $scope.apts[key].charges[tariff._tariff_group._id].new_volume);
+                    $scope.apts[key].charges[tariff._tariff_group._id].reappraisal_auto = ($scope.apts[key].charges[tariff._tariff_group._id].new_value - $scope.apts[key].charges[tariff._tariff_group._id].value).toFixed(2);
+                  });
+                  if (real_sum != $scope.tabs[tariff._tariff_group._id].volume) {
+                    // console.log($scope.tabs[tariff._tariff_group._id].volume);
+                    // console.log(real_sum);
+                    // console.log(max_key);
+                    // console.log('Repaired float error ' + ($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4) + ' for ' + $scope.apts[max_key].number);
+                    $scope.apts[max_key].charges[tariff._tariff_group._id].new_volume       = (Number($scope.apts[max_key].charges[tariff._tariff_group._id].new_volume) + Number(($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4))).toFixed(4);
+                    $scope.apts[max_key].charges[tariff._tariff_group._id].new_value        = ($scope.apts[max_key].charges[tariff._tariff_group._id].new_volume * $scope.tabs[tariff._tariff_group._id].tariff.rate).toFixed(2);
+                    $scope.apts[max_key].charges[tariff._tariff_group._id].reappraisal_auto = ($scope.apts[max_key].charges[tariff._tariff_group._id].new_value - $scope.apts[max_key].charges[tariff._tariff_group._id].value).toFixed(2);
+                  };
+                }
+              }
+            };*/
+            var updateCharges = function() {
+              // console.log($scope.apts);
+              if(!tariff._tariff_group.use_norm) {
+                console.log('Not Use norm');
+                angular.forEach($scope.apts, function(apt, key){
+                  var calc_var = 0;
+                  if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
+                  if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
+                  if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
+                  $scope.apts[key].charges[tariff._tariff_group._id].has_counter = false;
+                  $scope.apts[key].charges[tariff._tariff_group._id].new_norm = '';
+                  $scope.apts[key].charges[tariff._tariff_group._id].new_volume = (calc_var).toFixed(4);
+                  $scope.apts[key].charges[tariff._tariff_group._id].new_value =
+                    ($scope.apts[key].charges[tariff._tariff_group._id].new_volume *
+                      (($scope.apts[key].charges[tariff._tariff_group._id]._tariff)
+                        ? $scope.tariffs[tariff._tariff_group._id][$scope.apts[key].charges[tariff._tariff_group._id]._tariff].rate
+                        : $scope.tabs[tariff._tariff_group._id].tariff.rate
+                      )
+                    ).toFixed(2);
+                  $scope.apts[key].charges[tariff._tariff_group._id].reappraisal_auto = ($scope.apts[key].charges[tariff._tariff_group._id].new_value - $scope.apts[key].charges[tariff._tariff_group._id].value).toFixed(2);
+                });
+              }
+              else
+              {
+                console.log('Use norm');
+                if(!$scope.tabs[tariff._tariff_group._id].tariff.static_norm) {
+                  // console.log('Update charges for volume');
+                  var max_value = null;
+                  var max_key   = null;
+                  var real_sum  = 0;
+                  var to_share  = $scope.tabs[tariff._tariff_group._id].volume;
+                  // console.log('new to_share = ' + to_share);
+                  var calc_var  = $scope.tabs[tariff._tariff_group._id].calc_var;
+                  angular.forEach($scope.apts, function(apt, key){
+                    if(apt.charges[tariff._tariff_group._id].has_counter)
+                    {
+                      to_share -= apt.charges[tariff._tariff_group._id].volume;
+                      if(tariff._tariff_group.use_residents) calc_var    -= $scope.apts[key].residents;
+                      if(tariff._tariff_group.use_space) calc_var        -= $scope.apts[key].space;
+                      if(tariff._tariff_group.use_common_space) calc_var -= $scope.apts[key].common_space;
+                    }
+                  });
+                  var new_norm = (to_share/calc_var).toFixed(4);
+                  // console.log(to_share + " | " + calc_var);
+                  // console.log(new_norm);
+                  angular.forEach($scope.apts, function(apt, key){
+                    var calc_var = 0;
+                    if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
+                    if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
+                    if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
+                    $scope.apts[key].charges[tariff._tariff_group._id].new_norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : new_norm;
+                    $scope.apts[key].charges[tariff._tariff_group._id].new_volume = (!apt.charges[tariff._tariff_group._id].has_counter) ? (new_norm * calc_var).toFixed(4) : apt.charges[tariff._tariff_group._id].volume.toFixed(4);
+                    if(!apt.charges[tariff._tariff_group._id].has_counter && ($scope.apts[key].charges[tariff._tariff_group._id].new_volume > max_value || max_value == null))
+                    {
+                      max_value = $scope.apts[key].charges[tariff._tariff_group._id].new_volume;
+                      // console.log("INIT max_value = " + max_value);
+                      max_key   = key;
+                    }
+                    real_sum += Number($scope.apts[key].charges[tariff._tariff_group._id].new_volume);
+                    $scope.apts[key].charges[tariff._tariff_group._id].new_value =
+                      ($scope.apts[key].charges[tariff._tariff_group._id].new_volume *
+                        (($scope.apts[key].charges[tariff._tariff_group._id]._tariff)
+                          ? $scope.tariffs[tariff._tariff_group._id][$scope.apts[key].charges[tariff._tariff_group._id]._tariff].rate
+                          : $scope.tabs[tariff._tariff_group._id].tariff.rate
+                        )
+                      ).toFixed(2);
+                    $scope.apts[key].charges[tariff._tariff_group._id].reappraisal_auto = ($scope.apts[key].charges[tariff._tariff_group._id].new_value - $scope.apts[key].charges[tariff._tariff_group._id].value).toFixed(2);
+                  });
+                  if (real_sum != $scope.tabs[tariff._tariff_group._id].volume) {
+                    // console.log("max_value = " + max_value);
+                    // console.log("max_key = " + max_key);
+                    // console.log("real_sum = " + real_sum);
+                    $scope.apts[max_key].charges[tariff._tariff_group._id].new_volume = (Number($scope.apts[max_key].charges[tariff._tariff_group._id].new_volume) + Number(($scope.tabs[tariff._tariff_group._id].volume - real_sum).toFixed(4))).toFixed(4);
+                    // console.log($scope.apts[max_key].charges[tariff._tariff_group._id].new_volume);
+                    $scope.apts[max_key].charges[tariff._tariff_group._id].new_value =
+                      ($scope.apts[max_key].charges[tariff._tariff_group._id].new_volume *
+                        (($scope.apts[max_key].charges[tariff._tariff_group._id]._tariff)
+                          ? $scope.tariffs[tariff._tariff_group._id][$scope.apts[max_key].charges[tariff._tariff_group._id]._tariff].rate
+                          : $scope.tabs[tariff._tariff_group._id].tariff.rate
+                        )
+                      ).toFixed(2);
+                    // console.log($scope.apts[max_key].charges[tariff._tariff_group._id].new_value);
+                    $scope.apts[max_key].charges[tariff._tariff_group._id].reappraisal_auto = ($scope.apts[max_key].charges[tariff._tariff_group._id].new_value - $scope.apts[max_key].charges[tariff._tariff_group._id].value).toFixed(2);
+                  };
+                }
+                else
+                {
+                  angular.forEach($scope.apts, function(apt, key){
+                    var calc_var = 0;
+                    if(tariff._tariff_group.use_residents) calc_var    += $scope.apts[key].residents;
+                    if(tariff._tariff_group.use_space) calc_var        += $scope.apts[key].space;
+                    if(tariff._tariff_group.use_common_space) calc_var += $scope.apts[key].common_space;
+                    $scope.apts[key].charges[tariff._tariff_group._id].new_norm = (apt.charges[tariff._tariff_group._id].has_counter) ? '' : $scope.tabs[tariff._tariff_group._id].norm;
+                    $scope.apts[key].charges[tariff._tariff_group._id].new_volume = (!apt.charges[tariff._tariff_group._id].has_counter) ? ($scope.tabs[tariff._tariff_group._id].norm * calc_var).toFixed(4) : apt.charges[tariff._tariff_group._id].volume.toFixed(4);
+                    $scope.apts[key].charges[tariff._tariff_group._id].new_value =
+                      ($scope.apts[key].charges[tariff._tariff_group._id].new_volume *
+                        (($scope.apts[key].charges[tariff._tariff_group._id]._tariff)
+                          ? $scope.tariffs[tariff._tariff_group._id][$scope.apts[key].charges[tariff._tariff_group._id]._tariff].rate
+                          : $scope.tabs[tariff._tariff_group._id].tariff.rate
+                        )
+                      ).toFixed(2);
+                    $scope.apts[key].charges[tariff._tariff_group._id].reappraisal_auto = ($scope.apts[key].charges[tariff._tariff_group._id].new_value - $scope.apts[key].charges[tariff._tariff_group._id].value).toFixed(2);
+                  });
+                }
+              }
+            };
+            // updateCharges();
+            $scope.$watch("tabs['" + tariff._tariff_group._id + "'].by_volume", function( newValue ) {
               // console.log( "$watch : " + newValue );
               updateCharges();
             });
-            $scope.$watch("apts['" + key +"'].charges['" + tariff._tariff_group._id + "'].volume", function( newValue ) {
+            // Wathing common volume
+            $scope.$watch("tabs['" + tariff._tariff_group._id + "'].volume", function( newValue ) {
+              console.log('Update charges for volume field');
               // console.log( "$watch : " + newValue );
               updateCharges();
             });
+            // Watching common norm
+            $scope.$watch("tabs['" + tariff._tariff_group._id + "'].norm", function( newValue ) {
+              // console.log( "$watch : " + newValue );
+              updateCharges();
+            });
+            // Watching apts
+            angular.forEach($scope.apts, function(apt, key){
+              $scope.$watch("apts['" + key +"'].charges['" + tariff._tariff_group._id + "'].has_counter", function( newValue ) {
+                // console.log( "$watch : " + newValue );
+                updateCharges();
+              });
+              $scope.$watch("apts['" + key +"'].charges['" + tariff._tariff_group._id + "'].volume", function( newValue ) {
+                // console.log( "$watch : " + newValue );
+                updateCharges();
+              });
+            });
           });
+        }).
+        error(function(data, status) {
+          $scope.data = data || "Request failed";
+          $scope.status = status;
         });
-      }).
-      error(function(data, status) {
-        $scope.data = data || "Request failed";
-        $scope.status = status;
       });
+    }).
+    error(function(data, status) {
+      $scope.data = data || "Request failed";
+      $scope.status = status;
     });
-  }).
-  error(function(data, status) {
-    $scope.data = data || "Request failed";
-    $scope.status = status;
   });
   $scope.save = function() {
     console.log('Saving reappraisal');
@@ -1067,18 +1250,18 @@ hapControllers.controller('DebtsCtrl', ['$rootScope', '$scope', '$http', functio
     });
     var file_corrupted = false;
     result.forEach(function(row, key){
-      if(row.length != 2)
+      if(row.length < 2)
       {
         $('.navbar').notify("Неверное количество полей в строке " + (key+1), {className: 'error'});
         file_corrupted = true;
       } else {
-        row.push('loading');
-        row.push('В обработке');
-        row.push('');
+        row[2] = 'loading';
+        row[3] = 'В обработке';
+        row[4] = '';
       }
-      if(isNaN(row[1]))
+      if(isNaN(row[1]) || row[1] == "")
       {
-        $('.navbar').notify("Неверно указана сумма в строке" + (key+1), {className: 'error'});
+        $('.navbar').notify("Неверно указана сумма в строке " + (key+1), {className: 'error'});
         file_corrupted = true;
       }
     });
@@ -1107,6 +1290,11 @@ hapControllers.controller('DebtsCtrl', ['$rootScope', '$scope', '$http', functio
         result[i][2] = '-';
         result[i][3] = 'Ошибка при поиске';
         result[i][4] = 'danger';
+        if(result.length > ++i) {
+          processRow(i);
+        } else {
+          $scope.ready2save = true;
+        }
       });
     };
     if(!file_corrupted)
