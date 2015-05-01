@@ -50,20 +50,42 @@ app.get('/api', function (req, res) {
     res.send('API is running');
 });
 // TariffGroups for building
-app.get('/api/tariff_groups_for_building/:id', function(req, res) {
-    return BuildingModel.findById(req.params.id).exec(function (err, building) {
-        if (!err) {
-            building.populate({ path: 'tariffs', options: { sort: 'number' }, model: TariffModel }, function(err, building) {
-                building.populate({ path: 'tariffs._tariff_group', model: TariffGroupModel }, function(err, building) {
-                    return res.send(building);
-                });
-            });
-        } else {
-            res.statusCode = 500;
-            log.error('Internal error(%d): %s',res.statusCode,err.message);
-            return res.send({ error: 'Server error' });
-        }
-    });
+app.get('/api/tariff_groups_for_building/:id/:period', function(req, res) {
+  var building_space = 0;
+  var building_residents = 0;
+  var building_common_space = 0;
+  return BuildingModel.findById(req.params.id).exec(function (err, building) {
+    if (!err) {
+      building.populate({ path: 'tariffs', options: { sort: 'number' }, model: TariffModel }, function(err, building) {
+        building.populate({ path: 'tariffs._tariff_group', model: TariffGroupModel }, function(err, building) {
+          ApartmentModel.find({'_building' : req.params.id, 'period' : req.params.period}).sort('number').exec(function (err, apartments) {
+            if (!err) {
+              apartments.forEach(function(apartment, key){
+                console.log('apartment', apartment);
+                building_space += apartment.space;
+                building_common_space += apartment.common_space;
+                building_residents += apartment.residents;
+              });
+              building = building.toObject();
+              building.space = building_space;
+              building.common_space = building_common_space;
+              building.residents = building_residents;
+              console.log('building', building);
+              return res.send(building);
+            } else {
+              res.statusCode = 500;
+              log.error('Internal error(%d): %s',res.statusCode,err.message);
+              return res.send({ error: 'Server error' });
+            }
+          });
+        });
+      });
+    } else {
+      res.statusCode = 500;
+      log.error('Internal error(%d): %s',res.statusCode,err.message);
+      return res.send({ error: 'Server error' });
+    }
+  });
 });
 // Charges for building
 app.get('/api/charges_for_building/:id/:tariff_groups/:period', function(req, res) {

@@ -22,16 +22,22 @@ function q_header(doc, apt, options) {
   doc.text('ПЛАТЕЛЬЩИК', 200);
   doc.text('ФИО:', margin).moveUp().text(apt.contractor, 200);
   doc.text('Адрес:', margin).moveUp().font('fonts/timesbd.ttf').text(apt.address, 200);
+  doc.font('fonts/times.ttf');
+  doc.moveUp().text('ИТОГО ПО ДОМУ', 380);
+  doc.font('fonts/timesbd.ttf');
   doc.moveUp().text(apt.date, 455, doc.y, { width: 120, align: 'right' });
   doc.font('fonts/times.ttf');
   doc.text('Проживающих:', margin).moveUp().text(apt.residents + ' чел.', 200);
+  doc.moveUp().text('Проживающих:', 380).moveUp().text(apt.b_residents + ' чел.', 450);
   doc.text('Площадь:', margin).moveUp().text(apt.space + ' ' + ((apt.common_space) ? '(МОП: ' + apt.common_space + ')' : '' ), 200);
+  doc.moveUp().text('Площадь:', 380).moveUp().text(apt.b_space + ' ' + ((apt.b_common_space) ? '(МОП: ' + apt.b_common_space + ')' : '' ), 450);
   return doc;
 }
 
 function q_table(table, head, columns, footer, head_align, body_align, footer_align, size, doc) {
   var shift = 0;
   var head_height = Number(1);
+  doc.fontSize(8);
   for (var i = 0; i < size[0]; i++) {
     var y_before = doc.y;
     doc.text(head[i], margin + shift, doc.y, {width: columns[i] - 6, align: head_align[i]});
@@ -42,6 +48,7 @@ function q_table(table, head, columns, footer, head_align, body_align, footer_al
     doc.moveUp(cell_height);
     shift += (columns[i]) ? columns[i] : 0;
   };
+  doc.fontSize(9);
   doc.moveDown(head_height);
   for (var i = 0; i < size[1]; i++) {
     shift = 0;
@@ -143,6 +150,7 @@ function q_body(apt, is_first_page, options, tariffs, doc) {
         (executor.tariff_groups[prop].charge.norm == null) ? '-' : executor.tariff_groups[prop].charge.norm,
         executor.tariff_groups[prop].tariff_group.norm_dimension,
         executor.tariff_groups[prop].charge.volume,
+        executor.tariff_groups[prop].total_volume,
         executor.tariff_groups[prop].tariff_group.value_dimension,
         (executor.tariff_groups[prop].charge._tariff) ? tariffs[executor.tariff_groups[prop].charge._tariff].rate : executor.tariff_groups[prop].tariff.rate,
         (executor.tariff_groups[prop].charge.value).toFixed(2),
@@ -150,12 +158,12 @@ function q_body(apt, is_first_page, options, tariffs, doc) {
         (executor.tariff_groups[prop].charge.reappraisal_auto + executor.tariff_groups[prop].charge.reappraisal_manual + executor.tariff_groups[prop].charge.value).toFixed(2)
       ]);
     }
-    var head = [ 'Вид услуги', 'Норматив', 'Ед. изм. норм.', 'Объем', 'Ед. изм. объема', 'Тариф руб./ед.', 'Итого', 'Пере-расчеты', 'Итого к оплате'];
-    var footer = [ 'Итого', ' ', ' ', ' ', ' ', ' ', ' ', ' ', (executor.total).toFixed(2)];
-    var columns = [ 110, 50, 45, 45, 40, 45, 45, 45, 55 ];
-    var head_align = ['center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center'];
-    var body_align = ['left', 'right', 'center', 'right', 'center', 'right', 'right', 'right', 'right'];
-    var footer_align = ['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
+    var head = [ 'Вид услуги', 'Норма-тив', 'Ед. изм. норм.', 'Объем', 'Объем по дому', 'Ед. изм. объема', 'Тариф руб./ед.', 'Итого', 'Пере-расчеты', 'Итого к оплате'];
+    var footer = [ 'Итого', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', (executor.total).toFixed(2)];
+    var columns = [ 110, 36, 40, 35, 35, 37, 40, 45, 45, 55 ];
+    var head_align = ['center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center'];
+    var body_align = ['left', 'right', 'center', 'right', 'right', 'center', 'right', 'right', 'right', 'right'];
+    var footer_align = ['left', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right', 'right'];
     var size = [ columns.length, table.length ];
     doc.fontSize(9);
     doc = q_table(table, head, columns, footer, head_align, body_align, footer_align, size, doc);

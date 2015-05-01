@@ -108,17 +108,18 @@ hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', 
 
   $scope.quittances = function (building_id) {
     var tariffs = Tariff.query(function() {
-      $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + building_id}).
+      $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + building_id + '/' + $rootScope.current_period.date}).
       success(function(building_data, status) {
+        console.log ('building_data', building_data);
         var date = moment($rootScope.current_period.date).format('MMMM YYYY');
         var data = {
-          options     : null,
-          tariffs     : {},
-          street      : building_data.street,
-          number      : building_data.number,
-          description : building_data.description,
-          date        : moment($rootScope.current_period.date).format('YYYY.MM'),
-          apts        : {}
+          options      : null,
+          tariffs      : {},
+          street       : building_data.street,
+          number       : building_data.number,
+          description  : building_data.description,
+          date         : moment($rootScope.current_period.date).format('YYYY.MM'),
+          apts         : {}
         };
         angular.forEach(tariffs, function(tariff, key){
           data.tariffs[tariff._id] = tariff;
@@ -137,16 +138,19 @@ hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', 
         {
           angular.forEach(apartments, function(apt, key){
             data.apts[apt._id] = {
-              address      : 'ул. ' + building_data.street + ', д. ' + building_data.number + ', к. ' + apt.number,
-              number       : apt.number,
-              contractor   : apt.contractor.last_name + ' ' + apt.contractor.first_name + ' ' + apt.contractor.second_name,
-              residents    : apt.residents,
-              space        : apt.space,
-              common_space : apt.common_space,
-              date         : date,
-              total        : 0,
-              total_debt   : apt.debt,
-              executors: []
+              address        : 'ул. ' + building_data.street + ', д. ' + building_data.number + ', к. ' + apt.number,
+              number         : apt.number,
+              contractor     : apt.contractor.last_name + ' ' + apt.contractor.first_name + ' ' + apt.contractor.second_name,
+              residents      : apt.residents,
+              b_residents    : building_data.residents,
+              space          : apt.space,
+              common_space   : apt.common_space,
+              b_space        : building_data.space,
+              b_common_space : building_data.common_space,
+              date           : date,
+              total          : 0,
+              total_debt     : apt.debt,
+              executors      : []
             };
             angular.forEach(building_data.tariffs, function(tariff, key){
               data.apts[apt._id].executors[executors.indexOf(tariff._tariff_group.executor)] = {
@@ -159,6 +163,7 @@ hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', 
               data.apts[apt._id].executors[executors.indexOf(tariff._tariff_group.executor)].tariff_groups[tariff._tariff_group._id] = {
                 tariff_group: tariff._tariff_group,
                 tariff: tariff,
+                total_volume: 0,
                 charge: null
               }
             });
@@ -174,7 +179,11 @@ hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', 
               data.apts[charge._apartment].total += charge.value + charge.reappraisal_auto + charge.reappraisal_manual;
               // data.apts[charge._apartment].total_debt += charge.debt;
               data.apts[charge._apartment].executors[tariff_group_executor[charge._tariff_group]].total += charge.value + charge.reappraisal_auto + charge.reappraisal_manual;
+              angular.forEach(data.apts, function(apt, key){
+                data.apts[key].executors[tariff_group_executor[charge._tariff_group]].tariff_groups[charge._tariff_group].total_volume += charge.volume;
+              })
             })
+            console.log(data);
             Options.get(function(options){
               data.options = options;
               console.log(data);
@@ -206,7 +215,7 @@ hapControllers.controller('BuildingsCtrl', ['$scope', '$rootScope', 'Building', 
 
   $scope.saldo = function (building_id) {
     var data = {};
-    $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + building_id}).
+    $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + building_id + '/' + $rootScope.current_period.date}).
     success(function(building_data, status) {
       var date = moment($rootScope.current_period.date).format('MMMM YYYY');
       var data = {
@@ -551,7 +560,7 @@ hapControllers.controller('ChargesBuildingCtrl', ['$scope', '$rootScope', '$rout
   $scope.building = Building.get({id: $routeParams.building_id});
 
   var tariffs = Tariff.query(function() {
-    $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + $routeParams.building_id}).
+    $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + $routeParams.building_id + '/' + $rootScope.current_period.date}).
     success(function(data, status) {
       var tariff_group_ids = [];
       $scope.tariffs = {};
@@ -866,7 +875,7 @@ hapControllers.controller('ReappraisalsBuildingCtrl', ['$scope', '$rootScope', '
   $scope.building = Building.get({id: $routeParams.building_id});
 
   var tariffs = Tariff.query(function() {
-    $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + $routeParams.building_id}).
+    $http({method: 'GET', url: 'http://localhost:1337/api/tariff_groups_for_building/' + $routeParams.building_id + '/' + $rootScope.current_period.date}).
     success(function(data, status) {
       var tariff_group_ids = [];
       $scope.tariffs = {};
